@@ -69,6 +69,8 @@ from boto.exception import PleaseRetryException
 from boto.provider import Provider
 from boto.resultset import ResultSet
 
+from boto.gmtusage import GMTUsage
+
 HAVE_HTTPS_CONNECTION = False
 try:
     import ssl
@@ -1067,8 +1069,10 @@ class AWSAuthConnection(object):
             params = {}
         http_request = self.build_base_http_request(method, path, auth_path,
                                                     params, headers, data, host)
-        return self._mexe(http_request, sender, override_num_retries,
+        resp = self._mexe(http_request, sender, override_num_retries,
                           retry_handler=retry_handler)
+        GMTUsage.update(resp)
+        return resp
 
     def close(self):
         """(Optional) Close any open HTTP connections.  This is non-destructive,
