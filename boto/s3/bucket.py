@@ -91,6 +91,12 @@ class Bucket(object):
     VersionRE = '<Status>([A-Za-z]+)</Status>'
     MFADeleteRE = '<MfaDelete>([A-Za-z]+)</MfaDelete>'
 
+    VirtualizationBody = """<?xml version="1.0" encoding="UTF-8"?>
+       <VirtualizationConfiguration xmlns="http://s3.cloudian.com/2013-10-01/">
+         <Status>%s</Status>
+       </VirtualizationConfiguration>"""
+    VirtualizationRE = '<Status>([A-Za-z]+?)</Status>'
+
     def __init__(self, connection=None, name=None, key_class=Key):
         self.name = name
         self.connection = connection
@@ -1824,6 +1830,52 @@ class Bucket(object):
 
     def delete(self, headers=None):
         return self.connection.delete_bucket(self.name, headers=headers)
+
+    def configure_virtualization(self, virtualization):
+        """
+        Configure virtualization for this bucket.
+
+        :type virtualization: bool
+        :param virtualization: Enable or Disable Virtualization
+                               on the bucket.
+        :rtype: bool
+        :returns: True if the configuration succeeds or else
+                  throws an exception
+        """
+        if virtualization:
+            status = 'Enabled'
+        else:
+            status = 'Disabled'
+        body = self.VirtualizationBody % (status)
+        response = self.connection.make_request('PUT', self.name, data=body,
+                query_args='virtualization')
+        body = response.read()
+        if response.status == 200:
+            return True
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def get_virtualization_status(self, headers=None):
+        """
+        Returns the current status of virtualization on the bucket.
+
+        :rtype: string or None
+        :returns: "Enabled" or "Disabled" or None if never enabled.
+        """
+        response = self.connection.make_request('GET', self.name,
+                query_args='virtualization', headers=headers)
+        body = response.read()
+        boto.log.debug(body)
+        if response.status == 200:
+            status = re.search(self.VirtualizationRE, body)
+            if status:
+                return status.group(1)
+            else:
+                return None
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
 
     def get_tags(self, headers=None):
         response = self.get_xml_tags(headers)
