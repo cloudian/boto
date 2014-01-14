@@ -473,7 +473,7 @@ class Bucket(object):
 
         """
         self.validate_kwarg_names(params, ['maxkeys', 'max_keys', 'prefix',
-                                           'marker', 'delimiter',
+                                           'marker', 'delimiter', 'meta',
                                            'encoding_type'])
         return self._get_all([('Contents', self.key_class),
                               ('CommonPrefixes', Prefix)],
@@ -539,7 +539,7 @@ class Bucket(object):
         :param params: Parameters to validate.
         """
         self.validate_kwarg_names(
-                params, ['maxkeys', 'max_keys', 'prefix', 'key_marker',
+                params, ['maxkeys', 'max_keys', 'prefix', 'key_marker', 'meta',
                          'version_id_marker', 'delimiter', 'encoding_type'])
 
     def get_all_multipart_uploads(self, headers=None, **params):
