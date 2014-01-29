@@ -255,6 +255,9 @@ class Lifecycle(list):
     A container for the rules associated with a Lifecycle configuration.
     """
 
+    def __init__(self):
+        self.tieringinfo = None
+
     def startElement(self, name, attrs, connection):
         if name == 'Rule':
             rule = Rule()

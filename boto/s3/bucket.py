@@ -1362,6 +1362,8 @@ class Bucket(object):
             headers = {}
         headers['Content-MD5'] = md5[1]
         headers['Content-Type'] = 'text/xml'
+        if lifecycle_config.tieringinfo is not None:
+            headers['x-gmt-tieringinfo'] = lifecycle_config.tieringinfo
         response = self.connection.make_request('PUT', self.name,
                                                 data=fp.getvalue(),
                                                 query_args='lifecycle',
@@ -1391,6 +1393,7 @@ class Bucket(object):
             if not isinstance(body, bytes):
                 body = body.encode('utf-8')
             xml.sax.parseString(body, h)
+            lifecycle.tieringinfo = response.getheader('x-gmt-tieringinfo')
             return lifecycle
         else:
             raise self.connection.provider.storage_response_error(
