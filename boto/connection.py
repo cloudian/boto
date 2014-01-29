@@ -376,7 +376,16 @@ class HTTPRequest(object):
 
         self.headers['User-Agent'] = UserAgent
 
-        connection._auth_handler.add_auth(self, **kwargs)
+        path = self.path.lower()
+        if (path.find('awsaccesskeyid=') != -1 and
+           path.find('expires=') != -1 and
+           path.find('signature=') != -1):
+            # Remove Authorization header when doing query auth
+            if self.headers.has_key('Authorization'):
+                del self.headers['Authorization']
+        else:
+            # Or just re-Authorize the request
+            connection._auth_handler.add_auth(self, **kwargs)
 
         # I'm not sure if this is still needed, now that add_auth is
         # setting the content-length for POST requests.
