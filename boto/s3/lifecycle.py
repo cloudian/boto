@@ -257,6 +257,7 @@ class Lifecycle(list):
 
     def __init__(self):
         self.tieringinfo = None
+        self.compare = None
 
     def startElement(self, name, attrs, connection):
         if name == 'Rule':
