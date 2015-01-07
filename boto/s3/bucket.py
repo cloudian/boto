@@ -223,6 +223,7 @@ class Bucket(object):
                 k.size = int(response.getheader('content-length'))
             else:
                 k.size = 0
+            k.hyperstore = response.getheader('x-gmt-hyperstore')
             k.name = key_name
             k.handle_version_headers(response)
             k.handle_encryption_headers(response)

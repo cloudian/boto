@@ -113,6 +113,7 @@ class Key(object):
         self.content_language = None
         self.filename = None
         self.etag = None
+        self.hyperstore = None
         self.is_latest = False
         self.last_modified = None
         self.owner = None
@@ -328,6 +329,8 @@ class Key(object):
                     self.size = int(end_range)
                 elif name.lower() in Key.base_fields:
                     self.__dict__[name.lower().replace('-', '_')] = value
+                elif name.lower() == 'x-gmt-hyperstore':
+                    self.hyperstore = value
             self.handle_version_headers(self.resp)
             self.handle_encryption_headers(self.resp)
             self.handle_restore_headers(self.resp)
