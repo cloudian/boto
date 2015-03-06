@@ -28,7 +28,7 @@ from nose.tools import assert_equal
 
 from boto.auth import HmacAuthV4Handler
 from boto.auth import S3HmacAuthV4Handler
-from boto.auth import detect_potential_s3sigv4
+from boto.auth import detect_potential_s3sigv4, detect_anon
 from boto.auth import detect_potential_sigv4
 from boto.connection import HTTPRequest
 from boto.provider import Provider
@@ -522,8 +522,10 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"""
 class FakeS3Connection(object):
     def __init__(self, *args, **kwargs):
         self.host = kwargs.pop('host', None)
-        self.anon = kwargs.pop('anon', None)
+        self.use_sigv4 = kwargs.pop('use_sigv4', False)
+        self.anon = kwargs.pop('anon', False)
 
+    @detect_anon
     @detect_potential_s3sigv4
     def _required_auth_capability(self):
         if self.anon:
