@@ -621,6 +621,29 @@ class S3KeySigV4Test(unittest.TestCase):
         with self.assertRaises(k.provider.storage_response_error):
             k.set_contents_from_file(sfp)
 
+    def test_set_contents_with_sse_c_using_sigv4(self):
+        # Force ssl for sse-c
+        if not config.has_section('Boto'):
+            boto.config.add_section('Boto')
+        boto.config.setbool('Boto', 'is_secure', True)
+        secure_conn = S3Connection()
+        secure_bucket = Bucket(secure_conn, self.bucket_name)
+        content="01234567890123456789"
+        # the plain text of customer key is "01testKeyToSSEC!"
+        header = {
+            "x-amz-server-side-encryption-customer-algorithm" :
+             "AES256",
+            "x-amz-server-side-encryption-customer-key" :
+             "MAAxAHQAZQBzAHQASwBlAHkAVABvAFMAUwBFAEMAIQA=",
+            "x-amz-server-side-encryption-customer-key-MD5" :
+             "fUgCZDDh6bfEMuP2bN38mg=="
+        }
+        # upload and download content with AWS specified headers
+        k = secure_bucket.new_key("testkey_for_sse_c")
+        k.set_contents_from_string(content, headers=header)
+        kn = secure_bucket.new_key("testkey_for_sse_c")
+        ks = kn.get_contents_as_string(headers=header)
+        self.assertEqual(ks, content.encode('utf-8'))
 
 class S3KeyVersionCopyTest(unittest.TestCase):
     def setUp(self):
