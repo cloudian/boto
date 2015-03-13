@@ -328,7 +328,6 @@ class S3MultiPartUploadSigV41Test(unittest.TestCase):
         # testing and abort the upload.
         mpu.cancel_upload()
 
-
 class S3MultiPartUploadSigV42Test(unittest.TestCase):
     # Copy/paste of S3MultiPartUploadSigV40Test, with streaming=2
     s3 = True
@@ -390,3 +389,12 @@ class S3MultiPartUploadSigV42Test(unittest.TestCase):
         # testing and abort the upload.
         mpu.cancel_upload()
 
+    def test_complete_japanese(self):
+        key_name = u"テスト"
+        mpu = self.bucket.initiate_multipart_upload(key_name)
+        fp = StringIO("small file")
+        mpu.upload_part_from_file(fp, part_num=1)
+        fp.close()
+        cmpu = mpu.complete_upload()
+        self.assertEqual(cmpu.key_name, key_name)
+        self.assertNotEqual(cmpu.etag, None)

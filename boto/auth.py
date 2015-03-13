@@ -613,9 +613,12 @@ class S3HmacAuthV4Handler(HmacAuthV4Handler, AuthHandler):
         # Urlencode the path, **NOT** ``auth_path`` (because vhosting).
         path = urllib.parse.urlparse(http_request.path)
         # Because some quoting may have already been applied, let's back it out.
-        unquoted = urllib.parse.unquote(path.path)
+        if isinstance(path.path, bytes):
+            unquoted = urllib.parse.unquote(path.path)
+        else:
+            unquoted = urllib.parse.unquote(path.path.encode('utf-8'))
         # Requote, this time addressing all characters.
-        encoded = urllib.parse.quote(unquoted, safe='/~')
+        encoded = urllib.parse.quote(unquoted, '/~')
         return encoded
 
     def canonical_query_string(self, http_request):
