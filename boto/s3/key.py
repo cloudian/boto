@@ -45,6 +45,7 @@ from boto import UserAgent
 from boto.utils import compute_md5, compute_hash
 from boto.utils import find_matching_headers
 from boto.utils import merge_headers_by_name
+from boto.utils import squash_headers_by_name
 
 class Key(object):
     """
@@ -1049,8 +1050,9 @@ class Key(object):
                 if BufferSize < self.MinChunkSize:
                     BufferSize = self.MinChunkSize
                 headers['_sha256'] = 'STREAMING-AWS4-HMAC-SHA256-PAYLOAD'
-                # add a new content-encoding header, incase on already exists
-                headers.update({'Content-Encoding':'aws-chunked'})
+                # add a new content-encoding header while squashing any
+                # existing ones back as sigv4 can only manage 1 header.
+                squash_headers_by_name('Content-Encoding', headers, 'aws-chunked')
                 headers['x-amz-decoded-content-length'] = str(size)
                 if streaming == 1:
                     # Stream using Content-Length
