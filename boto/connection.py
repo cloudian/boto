@@ -894,6 +894,9 @@ class AWSAuthConnection(object):
     def set_request_hook(self, hook):
         self.request_hook = hook
 
+    def sign_post_policy(self, host, post_policy, fields):
+        self._auth_handler.sign_post_policy(host, post_policy, fields)
+
     def _mexe(self, request, sender=None, override_num_retries=None,
               retry_handler=None):
         """

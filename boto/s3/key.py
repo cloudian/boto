@@ -29,10 +29,13 @@ import re
 import base64
 import binascii
 import math
+import random
+import string
 from hashlib import md5
 import boto.utils
 from socket import error as SocketError
-from boto.compat import BytesIO, six, urllib, encodebytes
+from email.header import Header
+from boto.compat import BytesIO, six, urllib, encodebytes, json
 
 from boto.auth import sigv4_streaming
 from boto.exception import BotoClientError
@@ -725,6 +728,268 @@ class Key(object):
                                                    expires_in_absolute,
                                                    version_id)
 
+    def post_file(self, fp, headers, fields, post_policy):
+        provider = self.bucket.connection.provider
+        try:
+            spos = fp.tell()
+        except IOError:
+            spos = None
+            self.read_from_stream = False
+
+        # If hash_algs is unset and the MD5 hasn't already been computed,
+        # default to an MD5 hash_alg to hash the data on-the-fly.
+        if not self.md5:
+            hash_algs = {'md5': md5}
+
+        def sender(http_conn, request):
+            # This function is called repeatedly for temporary retries
+            # so we must be sure the file pointer is pointing at the
+            # start of the data.
+            if spos is not None and spos != fp.tell():
+                fp.seek(spos)
+            elif spos is None and self.read_from_stream:
+                # if seek is not supported, and we've read from this
+                # stream already, then we need to abort retries to
+                # avoid setting bad data.
+                raise provider.storage_data_error(
+                    'Cannot retry failed request. fp does not support seeking.')
+            # likewise, the digesters should be reset for repeated calls
+            digesters = dict((alg, hash_algs[alg]()) for alg in hash_algs or {})
+
+            method = request.method
+            path = request.path
+            data = request.body
+            headers = request.headers
+
+            # Sign the policy adding back any fields or policy
+            # attribute values required by the signing method.
+            # The post_policy is also added the fields
+            # automatically by this method.
+            self.bucket.connection.sign_post_policy(request.host,
+                                                    post_policy, fields)
+
+            # Pre-create the top form data and the bottom trailer from the
+            # boundary and the different fields.
+            (top, bottom) = self.form_data(fields, boundary)
+
+            headers['Content-Length'] = str(len(top) + len(bottom) + self.size)
+
+            # If the caller explicitly specified host header, tell putrequest
+            # not to add a second host header. Similarly for accept-encoding.
+            skips = {}
+            if boto.utils.find_matching_headers('host', headers):
+              skips['skip_host'] = 1
+            if boto.utils.find_matching_headers('accept-encoding', headers):
+              skips['skip_accept_encoding'] = 1
+            http_conn.putrequest(method, path, **skips)
+            # It's hard to skip basic authorization, so just delete the headers
+            if headers.has_key('Authorization'):
+                del headers['Authorization']
+            if headers.has_key('x-amz-content-sha256'):
+                del headers['x-amz-content-sha256']
+            if headers.has_key('X-Amz-Date'):
+                del headers['X-Amz-Date']
+            for key in headers:
+                http_conn.putheader(key, headers[key])
+            http_conn.endheaders()
+
+            save_debug = self.bucket.connection.debug
+            self.bucket.connection.debug = 0
+            # If the debuglevel < 4 we don't want to show connection
+            # payload, so turn off HTTP connection-level debug output (to
+            # be restored below).
+            # Use the getattr approach to allow this to work in AppEngine.
+            if getattr(http_conn, 'debuglevel', 0) < 4:
+                http_conn.set_debuglevel(0)
+
+            # Send the multipart top which precedes the file data
+            http_conn.send(top)
+
+            data_len = 0
+            bytes_togo = self.size
+            need = BufferSize
+            if bytes_togo and bytes_togo < BufferSize:
+                need = bytes_togo
+            chunk = fp.read(need)
+
+            if spos is None:
+                # read at least something from a non-seekable fp.
+                self.read_from_stream = True
+
+            try:
+                while chunk:
+                    chunk_len = len(chunk)
+                    data_len += chunk_len
+                    http_conn.send(chunk)
+
+                    for alg in digesters:
+                        digesters[alg].update(chunk)
+                    if bytes_togo:
+                        bytes_togo -= chunk_len
+                        if bytes_togo <= 0:
+                            break
+
+                    need = BufferSize
+                    if bytes_togo and bytes_togo < BufferSize:
+                        need = bytes_togo
+                    chunk = fp.read(need)
+
+                # Send the multipart bottom which follows the file data
+                http_conn.send(bottom)
+
+                self.size = data_len
+
+                for alg in digesters:
+                    self.local_hashes[alg] = digesters[alg].digest()
+
+            except SocketError as e:
+                # AWS cuts connections after sending a failure
+                # response to the client when using 100-continue.
+                # Handle the connection cut gracefully here as
+                # we can probably read the response below and
+                # handle it normally.
+                if e.errno != errno.EPIPE and e.errno != errno.ECONNRESET:
+                    raise
+
+            http_conn.set_debuglevel(save_debug)
+            self.bucket.connection.debug = save_debug
+            response = http_conn.getresponse()
+            body = response.read()
+
+            if not self.should_retry(response, False):
+                raise provider.storage_response_error(
+                    response.status, response.reason, body)
+
+            return response
+
+        def retry_handler(response, i, next_sleep, request):
+            if response.status == 303:
+                # Don't handle redirect for the 303 response status
+                # as it's a result of success_action_redirect and should
+                # not be retried.
+                return ('Ignoring POST 303 redirect', 1000000, 0)
+
+            # Otherwise return None to enable normal retry logic
+            return None
+
+        if not headers:
+            headers = {}
+        else:
+            headers = headers.copy()
+        # Overwrite user-supplied user-agent.
+        for header in find_matching_headers('User-Agent', headers):
+            del headers[header]
+        headers['User-Agent'] = UserAgent
+
+        if find_matching_headers('Content-Language', headers):
+            self.content_language = merge_headers_by_name(
+                'Content-Language', headers)
+
+        content_type_headers = find_matching_headers('Content-Type', headers)
+        if content_type_headers:
+            # Some use cases need to suppress sending of the Content-Type
+            # header and depend on the receiving server to set the content
+            # type. This can be achieved by setting headers['Content-Type']
+            # to None when calling this method.
+            if (len(content_type_headers) == 1 and
+                headers[content_type_headers[0]] is None):
+                # Delete null Content-Type value to skip sending that header.
+                del headers[content_type_headers[0]]
+                self.content_type = None
+            else:
+                squash_headers_by_name('Content-Type', headers)
+                # we will later overwrite the header value
+                self.content_type = headers['Content-Type']
+        elif self.path:
+            self.content_type = mimetypes.guess_type(self.path)[0]
+            if self.content_type is None:
+                self.content_type = self.DefaultContentType
+        if self.content_type is not None:
+            fields['Content-Type'] = self.content_type
+            post_policy = self.add_post_policy(post_policy, 'content-type', '')
+
+        # Now that we have self.content_type, we can overwrite the
+        # header with the one we will use in the post request.
+        boundary = ''
+        validchars = string.ascii_letters + string.digits
+        for i in range(50):
+            boundary += random.choice(validchars)
+        headers['Content-Type'] = 'multipart/form-data; boundary=%s' % boundary
+
+        fields = boto.utils.merge_meta(fields, self.metadata, provider)
+
+        BufferSize = self.BufferSize
+
+        headers['Expect'] = '100-Continue'
+        resp = self.bucket.connection.make_request(
+            'POST',
+            self.bucket.name,
+            headers=headers,
+            sender=sender,
+            retry_handler=retry_handler
+        )
+        self.handle_version_headers(resp, force=True)
+        self.handle_addl_headers(resp.getheaders())
+
+    def add_post_policy(self, post_policy, name, value):
+        if post_policy is None:
+            return post_policy
+        policy = json.loads(post_policy)
+        conds = policy['conditions']
+        for cond in conds:
+            try:
+                if cond.has_key(name):
+                    # nothing to add
+                    return post_policy
+            except:
+                # not a dict, tuple of 3
+                if cond[1] == '$%s' % name:
+                    # nothing to add
+                    return post_policy
+        # Not found, add it
+        if value == '' or value == None:
+            policy['conditions'].append(('starts-with', '$%s' % name, ''))
+        else:
+            policy['conditions'].append(('eq', '$%s' % name, value))
+        return json.dumps(policy)
+
+    def form_data(self, fields, boundary):
+        # key/file can be overriden in fields for test purposes
+        if fields.has_key('Key'):
+            key = fields['Key']
+            del fields['Key']
+        else:
+            key = self.name
+        if fields.has_key('file'):
+            filename = fields['file']
+            del fields['file']
+        else:
+            filename = self.name
+        top = ''
+        # Add all the fields in first.
+        for k,v in fields.items():
+            top += '\r\n--%s\r\n' % boundary
+            top += 'Content-Disposition: form-data; name="%s"\r\n' % k
+            top += '\r\n%s' % v
+        # Next add the Key
+        top += '\r\n--%s\r\n' % boundary
+        top += 'Content-Disposition: form-data; name="Key"\r\n'
+        top += 'Content-Type: text/plain; charset="utf-8"\r\n'
+        top += '\r\n%s' % key
+        # Add the file (except the body) to complete the top.
+        top += '\r\n--%s\r\n' % boundary
+        top += 'Content-Disposition: form-data; name="file"'
+        top += '; filename="%s"\r\n' % filename # Header(filename, 'utf-8')
+        top += 'Content-Type: %s\r\n' % self.content_type
+        top += '\r\n'
+        top = top.encode('utf-8')
+        top = top.lstrip()
+
+        # Bottom is the closing delimiter
+        bottom = '\r\n--%s--' % boundary
+
+        return (top, bottom)
+
     def send_file(self, fp, headers=None, cb=None, num_cb=10,
                   query_args=None, chunked_transfer=False, size=None):
         """
@@ -1103,10 +1368,6 @@ class Key(object):
                 # 500 & 503 can be plain retries.
                 return True
 
-        if response.getheader('location'):
-            # If there's a redirect, plain retry.
-            return True
-
         if 200 <= response.status <= 299:
             self.etag = response.getheader('etag')
             md5 = self.md5
@@ -1128,6 +1389,10 @@ class Key(object):
                         'ETag from S3 did not match computed MD5. '
                         '%s vs. %s' % (self.etag, self.md5))
 
+            return True
+
+        if response.getheader('location'):
+            # If there's a redirect, plain retry.
             return True
 
         if response.status == 400:
@@ -1576,6 +1841,89 @@ class Key(object):
         r = self.set_contents_from_file(fp, headers, replace, cb, num_cb,
                                         policy, md5, reduced_redundancy,
                                         encrypt_key=encrypt_key)
+        fp.close()
+        return r
+
+    def post_contents_from_file(self, fp, headers=None, post_policy=None,
+                                fields={}, policy=None,
+                                reduced_redundancy=False, encrypt_key=False):
+        """
+        Store an object in S3 using the name of the Key object
+        as the key in S3 and the contents of the file pointed to
+        by 'fp' as the contents. The data is read from 'fp' from
+        its current position until EOF. NOTE: you will normally
+        want to use the method set_contents_from_file() instead
+        as this method simulates a browser upload using a form
+        and is less flexible.
+
+        :type fp: file
+        :param fp: the file whose contents to upload
+
+        :type headers: dict
+        :param headers: Additional HTTP headers that will be sent with
+            the POST request. Don't include headers about the object as
+            such details  should be sent in the POST body parts.
+
+        :type post_policy: str
+        :param post_policy: the post policy for the upload. This should
+            be a plain unicode string or utf-8 bytes.
+
+        :type fields: dict
+        :param fields: Additional form field data in dictionary format
+
+        :type policy: :class:`boto.s3.acl.CannedACLStrings`
+        :param policy: A canned ACL policy that will be applied to the
+            new key in S3.
+
+        :type reduced_redundancy: bool
+        :param reduced_redundancy: If True, this will set the storage
+            class of the new Key to be REDUCED_REDUNDANCY. The Reduced
+            Redundancy Storage (RRS) feature of S3, provides lower
+            redundancy at lower storage cost.
+
+        :type encrypt_key: bool
+        :param encrypt_key: If True, the new copy of the object will
+            be encrypted on the server-side by S3 and will be stored
+            in an encrypted form while at rest in S3.
+
+        :rtype: int
+        :return: The number of bytes written to the key.
+        """
+        provider = self.bucket.connection.provider
+        fields = fields or {}
+        if policy:
+            fields['acl'] = policy
+        if encrypt_key:
+            fields[provider.server_side_encryption_header] = 'AES256'
+        if reduced_redundancy:
+            self.storage_class = 'REDUCED_REDUNDANCY'
+            if provider.storage_class_header:
+                fields[provider.storage_class_header] = self.storage_class
+        if hasattr(fp, 'name'):
+            self.path = fp.name
+
+        # Calc the size of the object
+        spos = fp.tell()
+        fp.seek(0, os.SEEK_END)
+        self.size = fp.tell() - spos
+        fp.seek(spos)
+
+        self.post_file(fp, headers=headers, fields=fields,
+                       post_policy=post_policy)
+
+        # return number of bytes written.
+        return self.size
+
+    def post_contents_from_string(self, string_data, headers=None,
+                                  post_policy=None, fields={}, policy=None,
+                                  reduced_redundancy=False,
+                                  encrypt_key=False):
+        if not isinstance(string_data, bytes):
+            string_data = string_data.encode("utf-8")
+        fp = BytesIO(string_data)
+        r = self.post_contents_from_file(fp, headers, post_policy, fields,
+                                         policy, reduced_redundancy,
+                                         encrypt_key=encrypt_key)
         fp.close()
         return r
 

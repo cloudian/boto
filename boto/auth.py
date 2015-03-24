@@ -39,7 +39,7 @@ import hmac
 import os
 import posixpath
 
-from boto.compat import urllib, encodebytes, parse_qs_safe, urlparse
+from boto.compat import urllib, encodebytes, parse_qs_safe, json, urlparse
 from boto.auth_handler import AuthHandler
 from boto.exception import BotoClientError
 
@@ -157,6 +157,8 @@ class AnonAuthHandler(AuthHandler, HmacKeys):
     def add_auth(self, http_request, **kwargs):
         pass
 
+    def sign_post_policy(self, host, post_policy, fields):
+        pass
 
 class HmacAuthV1Handler(AuthHandler, HmacKeys):
     """    Implements the HMAC request signing used by S3 and GS."""
@@ -192,6 +194,11 @@ class HmacAuthV1Handler(AuthHandler, HmacKeys):
         boto.log.debug('Signature:\n%s' % auth)
         headers['Authorization'] = auth
 
+    def sign_post_policy(self, host, post_policy, fields):
+        b64Policy = base64.b64encode(post_policy)
+        fields['AWSAccessKeyId'] = self._provider.access_key
+        fields['policy'] = b64Policy
+        fields['signature'] = self.sign_string(b64Policy)
 
 class HmacAuthV2Handler(AuthHandler, HmacKeys):
     """
@@ -783,6 +790,75 @@ class S3HmacAuthV4Handler(HmacAuthV4Handler, AuthHandler):
         return super(S3HmacAuthV4Handler, self).add_auth(updated_req,
                                                          unmangled_req=req,
                                                          **kwargs)
+
+    def sign_post_policy(self, host, post_policy, fields):
+        # Decode the policy and remove old signatures
+        policy = json.loads(post_policy)
+        self.remove_old_sign(policy, fields)
+        # Add V4 conditions to both policy and fields
+        now = datetime.datetime.utcnow()
+        fields['x-amz-date'] = now.strftime('%Y%m%dT%H%M%SZ')
+        policy['conditions'].append({'x-amz-date': fields['x-amz-date']})
+        fields['x-amz-algorithm'] = 'AWS4-HMAC-SHA256'
+        policy['conditions'].append({'x-amz-algorithm': 'AWS4-HMAC-SHA256'})
+        scope = []
+        scope.append(self._provider.access_key)
+        sdate = fields['x-amz-date'][0:8]
+        sregion = self.determine_region_name(host)
+        sservice = self.determine_service_name(host)
+        scope.append(sdate)
+        scope.append(sregion)
+        scope.append(sservice)
+        scope.append('aws4_request')
+        scope = '/'.join(scope)
+        fields['x-amz-credential'] = scope
+        policy['conditions'].append({'x-amz-credential': scope})
+
+        # Finalize the policy
+        jpolicy = json.dumps(policy)
+        boto.log.debug('Final post policy: %s' % jpolicy)
+        b64Policy = base64.b64encode(jpolicy)
+        fields['policy'] = b64Policy
+
+        # Finally calculate the signature
+        key = self._provider.secret_key
+        kdate = self._sign(('AWS4' + key).encode('utf-8'), sdate)
+        kregion = self._sign(kdate, sregion)
+        kservice = self._sign(kregion, sservice)
+        signkey = self._sign(kservice, 'aws4_request')
+        signature = self._sign(signkey, b64Policy, hex=True)
+        fields['x-amz-signature'] = signature
+
+    def remove_old_sign(self, policy, fields):
+        n_conds = []
+        o_conds = policy['conditions']
+        for cond in o_conds:
+            try:
+                # cond is a dictionary
+                if cond.has_key('x-amz-algorithm'):
+                    continue
+                elif cond.has_key('x-amz-credential'):
+                    continue
+                elif cond.has_key('x-amz-date'):
+                    continue
+                else:
+                    n_conds.append(cond)
+            except:
+                # cond is a tuple of 3
+                if (cond[0] == 'eq' and cond[1] in ['x-amz-algorithm',
+                                                    'x-amz-credential',
+                                                    'x-amz-date']):
+                    continue
+                else:
+                    n_conds.append(cond)
+        policy['conditions'] = n_conds
+
+        # Next clean the fields of V2 and V4
+        for name in ('AWSAccessKeyId', 'signature', 'policy',
+                     'x-amz-date', 'x-amz-algorithm', 'x-amz-credential',
+                     'x-amz-signature', ):
+            if fields.has_key(name):
+                del fields[name]
 
     def presign(self, req, expires, iso_date=None):
         """
