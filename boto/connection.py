@@ -384,6 +384,10 @@ class HTTPRequest(object):
             # Remove Authorization header when doing query auth
             if self.headers.has_key('Authorization'):
                 del self.headers['Authorization']
+            if self.headers.has_key('x-amz-content-sha256'):
+                del self.headers['x-amz-content-sha256']
+            if self.headers.has_key('X-Amz-Date'):
+                del self.headers['X-Amz-Date']
         else:
             # Or just re-Authorize the request
             connection._auth_handler.add_auth(self, **kwargs)
