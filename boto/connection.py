@@ -515,6 +515,7 @@ class AWSAuthConnection(object):
             self.port = port
         else:
             self.port = PORTS_BY_SECURITY[is_secure]
+        self.last_response = None
 
         self.handle_proxy(proxy, proxy_port, proxy_user, proxy_pass)
         # define exceptions from http_client that we want to catch and retry
@@ -919,6 +920,7 @@ class AWSAuthConnection(object):
         boto.log.debug('Host: %s' % request.host)
         boto.log.debug('Port: %s' % request.port)
         boto.log.debug('Params: %s' % request.params)
+        self.last_response = None
         response = None
         body = None
         ex = None
@@ -959,6 +961,7 @@ class AWSAuthConnection(object):
                     connection.request(request.method, request.path,
                                        request.body, request.headers)
                     response = connection.getresponse()
+                self.last_response = response
                 boto.log.debug('Response headers: %s' % response.getheaders())
                 location = response.getheader('location')
                 # -- gross hack --
