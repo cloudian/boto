@@ -38,6 +38,7 @@ from email.utils import formatdate
 import hmac
 import os
 import posixpath
+import re
 
 from boto.compat import urllib, encodebytes, parse_qs_safe, json, urlparse
 from boto.auth_handler import AuthHandler
@@ -677,6 +678,18 @@ class S3HmacAuthV4Handler(HmacAuthV4Handler, AuthHandler):
         for ri in regions():
             if dothost.endswith(ri.endpoint.replace('-','.')):
                 return ri.name
+        # No match using endpoints. Before asking the user to specify a
+        # custom endpoint, see if we can guess the region by grabbing it
+        # out of hostname. We handle the following with optional ports:
+        #   - s3.region.xyz
+        #   - bucket.s3.region.xyz
+        #   - s3-region.domain.xyz
+        #   - s3.region.domain.xyz
+        #   - bucket.s3-region.domain.xyz
+        #   - bucket.s3.region.domain.xyz
+        m = re.match('^(.+\.)*s3[-\.]([^\.]+)\..+', host)
+        if m and m.lastindex == 2:
+            return m.group(2)
         msg = 'Cannot detect region name from the endpoint/host "%s" ' % host
         msg += 'for Signature V4. You can add additional region/endpoint '
         msg += 'mappings by creating an endpoints.json file and pointing '
