@@ -378,9 +378,9 @@ class HTTPRequest(object):
         self.headers['User-Agent'] = UserAgent
 
         path = self.path.lower()
-        if (path.find('awsaccesskeyid=') != -1 and
-           path.find('expires=') != -1 and
-           path.find('signature=') != -1):
+        if ((path.find('awsaccesskeyid=') != -1 or #V2 or V4 and
+             path.find('credential') != -1) and
+            path.find('expires=') != -1 and path.find('signature=') != -1):
             # Remove Authorization header when doing query auth
             if self.headers.has_key('Authorization'):
                 del self.headers['Authorization']
