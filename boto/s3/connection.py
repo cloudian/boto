@@ -527,7 +527,10 @@ class S3Connection(AWSAuthConnection):
         response = self.make_request('HEAD', bucket_name, headers=headers)
         body = response.read()
         if response.status == 200:
-            return self.bucket_class(self, bucket_name)
+            bucket = self.bucket_class(self, bucket_name)
+            policyid = response.getheader('x-gmt-policyid')
+            bucket.policyid = policyid
+            return bucket
         elif response.status == 403:
             # For backward-compatibility, we'll populate part of the exception
             # with the most-common default.
