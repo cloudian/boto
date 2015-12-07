@@ -1898,6 +1898,9 @@ class Key(object):
             fields['acl'] = policy
         if encrypt_key:
             fields[provider.server_side_encryption_header] = 'AES256'
+            decode_json_data = json.loads(post_policy)
+            decode_json_data['conditions'].append(('starts-with', '$%s' % provider.server_side_encryption_header, ''))
+            post_policy = json.dumps(decode_json_data)
         if reduced_redundancy:
             self.storage_class = 'REDUCED_REDUNDANCY'
             if provider.storage_class_header:
