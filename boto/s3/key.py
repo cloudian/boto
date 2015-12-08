@@ -133,6 +133,7 @@ class Key(object):
         self.source_version_id = None
         self.delete_marker = False
         self.encrypted = None
+        self.replication = None
         # If the object is being restored, this attribute will be set to True.
         # If the object is restored, it will be set to False.  Otherwise this
         # value will be None. If the restore is completed (ongoing_restore =
@@ -249,6 +250,13 @@ class Key(object):
                 # header for all objects except Standard storage class objects.
                 self._storage_class = 'STANDARD'
 
+    def handle_replication_headers(self, resp):
+        provider = self.bucket.connection.provider
+        if provider.replication_header:
+            self.replication = resp.getheader(
+                provider.replication_header, None)
+        else:
+            self.replication = None
 
     def handle_version_headers(self, resp, force=False):
         provider = self.bucket.connection.provider
@@ -340,6 +348,7 @@ class Key(object):
                     self.hyperstore = value
             self.handle_version_headers(self.resp)
             self.handle_encryption_headers(self.resp)
+            self.handle_replication_headers(self.resp)
             self.handle_restore_headers(self.resp)
             self.handle_addl_headers(self.resp.getheaders())
 
