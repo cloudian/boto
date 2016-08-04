@@ -155,6 +155,7 @@ class Provider(object):
             RESUMABLE_UPLOAD_HEADER_KEY: GOOG_HEADER_PREFIX + 'resumable',
             SECURITY_TOKEN_HEADER_KEY: GOOG_HEADER_PREFIX + 'security-token',
             SERVER_SIDE_ENCRYPTION_KEY: None,
+            REPLICATION_HEADER_KEY: None,
             # Note that this version header is not to be confused with
             # the Google Cloud Storage 'x-goog-api-version' header.
             VERSION_ID_HEADER_KEY: GOOG_HEADER_PREFIX + 'version-id',
