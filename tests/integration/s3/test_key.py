@@ -26,7 +26,9 @@ Some unit tests for S3 Key
 """
 
 from tests.unit import unittest
+import json
 import time
+from datetime import datetime, timedelta
 
 import boto.s3
 from boto import config
@@ -690,3 +692,49 @@ class S3KeyVersionCopyTest(unittest.TestCase):
         copied_key_contents = copied_key.get_contents_as_string()
         self.assertEqual(first_content, copied_key_contents)
 
+class S3KeyPostObject(unittest.TestCase):
+    def setUp(self):
+        self.conn = S3Connection()
+        self.bucket_name = 'boto-key-post-object-%d' % int(time.time())
+        self.bucket = self.conn.create_bucket(self.bucket_name)
+
+    def tearDown(self):
+        for key in self.bucket:
+            key.delete()
+        self.bucket.delete()
+
+    def test_key_post_object(self):
+        kname = 'post_key'
+        k = Key(self.bucket, kname)
+        body = 'x' * 30
+        sfp = StringIO(body)
+        policy = self.gen_policy()
+        wrote = k.post_contents_from_file(sfp, post_policy=policy)
+        self.assertEqual(wrote, 30)
+        k = self.bucket.get_key(kname)
+        self.assertEqual(k.encrypted, None)
+        self.assertEqual(k.get_contents_as_string(), body)
+
+    def test_key_post_object_sse(self):
+        kname = 'post_key_sse'
+        k = Key(self.bucket, kname)
+        body = 'x' * 30
+        sfp = StringIO(body)
+        policy = self.gen_policy()
+        wrote = k.post_contents_from_file(sfp, post_policy=policy, encrypt_key=True)
+        self.assertEqual(wrote, 30)
+        k = self.bucket.get_key(kname)
+        self.assertEqual(k.encrypted, 'AES256')
+        self.assertEqual(k.get_contents_as_string(), body)
+
+    def gen_policy(self):
+        policy = {}
+        now = datetime.utcnow()
+        expire_after = timedelta(minutes=15)
+        expiration = now + expire_after
+        policy['expiration'] = expiration.strftime('%Y-%m-%dT%H:%M:%SZ')
+        conds = []
+        conds.append({'bucket': self.bucket_name})
+        conds.append(('starts-with', '$key', ''))
+        policy['conditions'] = conds
+        return json.dumps(policy)
