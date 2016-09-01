@@ -564,7 +564,7 @@ class Bucket(object):
                                            'fetchowner', 'fetch_owner',
                                            'startafter', 'start_after',
                                            'continuationtoken',
-                                           'continuation_token',
+                                           'continuation_token', 'meta',
                                            'delimiter', 'encoding_type'])
         return self._get_all([('Contents', self.key_class),
                               ('CommonPrefixes', Prefix)],
