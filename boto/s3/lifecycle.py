@@ -44,7 +44,7 @@ class Rule(object):
 
     """
     def __init__(self, id=None, prefix=None, status=None, expiration=None,
-                 transition=None):
+                 transition=None, abortUpload = None):
         self.id = id
         self.prefix = '' if prefix is None else prefix
         self.status = status
@@ -64,6 +64,11 @@ class Rule(object):
         else:
             self.transition = Transitions()
 
+        if isinstance(abortUpload, AbortUpload):
+            self.abortUpload = abortUpload
+        else:
+            self.abortUpload = AbortUpload()
+
     def __repr__(self):
         return '<Rule: %s>' % self.id
 
@@ -73,6 +78,8 @@ class Rule(object):
         elif name == 'Expiration':
             self.expiration = Expiration()
             return self.expiration
+        elif name == 'AbortIncompleteMultipartUpload':
+            return self.abortUpload
         return None
 
     def endElement(self, name, value, connection):
@@ -95,7 +102,28 @@ class Rule(object):
             s += self.expiration.to_xml()
         if self.transition is not None:
             s += self.transition.to_xml()
+        if self.abortUpload is not None:
+            s += self.abortUpload.to_xml()
         s += '</Rule>'
+        return s
+
+class AbortUpload(object):
+    def __init__(self, days = None):
+        self.days = days
+    def startElement(self, name, attrs, connection):
+        return None
+    def endElement(self, name, value, connection):
+        if name == 'DaysAfterInitiation':
+            self.days = int(value)
+    def __repr__(self):
+        how_long = "in: %s days" % self.days
+        return '<AbortUpload: %s>' % how_long
+    def to_xml(self):
+        s = ''
+        if self.days is not None:
+            s = '<AbortIncompleteMultipartUpload>'
+            s += '<DaysAfterInitiation>%s</DaysAfterInitiation>' % self.days
+            s += '</AbortIncompleteMultipartUpload>'
         return s
 
 class Expiration(object):
@@ -282,7 +310,7 @@ class Lifecycle(list):
         return s
 
     def add_rule(self, id=None, prefix='', status='Enabled',
-                 expiration=None, transition=None):
+                 expiration=None, transition=None, abortUpload=None):
         """
         Add a rule to this Lifecycle configuration.  This only adds
         the rule to the local copy.  To install the new rule(s) on
@@ -311,5 +339,5 @@ class Lifecycle(list):
         :param transition: Indicates when an object transitions to a
             different storage class. 
         """
-        rule = Rule(id, prefix, status, expiration, transition)
+        rule = Rule(id, prefix, status, expiration, transition, abortUpload)
         self.append(rule)
