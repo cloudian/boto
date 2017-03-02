@@ -44,7 +44,8 @@ class Rule(object):
 
     """
     def __init__(self, id=None, prefix=None, status=None, expiration=None,
-                 transition=None):
+                 transition=None, abortUpload = None, ncExpiration = None,
+                 ncTransition = None):
         self.id = id
         self.prefix = '' if prefix is None else prefix
         self.status = status
@@ -64,6 +65,21 @@ class Rule(object):
         else:
             self.transition = Transitions()
 
+        if isinstance(abortUpload, AbortUpload):
+            self.abortUpload = abortUpload
+        else:
+            self.abortUpload = AbortUpload()
+
+        if ncExpiration:
+            self.ncExpiration = ncExpiration
+        else:
+            self.ncExpiration = Expiration()
+
+        if ncTransition:
+            self.ncTransition = ncTransition
+        else:
+            self.ncTransition = Transitions()
+
     def __repr__(self):
         return '<Rule: %s>' % self.id
 
@@ -73,6 +89,12 @@ class Rule(object):
         elif name == 'Expiration':
             self.expiration = Expiration()
             return self.expiration
+        elif name == 'AbortIncompleteMultipartUpload':
+            return self.abortUpload
+        elif name == 'NoncurrentVersionTransition':
+            return self.ncTransition
+        elif name == 'NoncurrentVersionExpiration':
+            return self.ncExpiration
         return None
 
     def endElement(self, name, value, connection):
@@ -95,7 +117,32 @@ class Rule(object):
             s += self.expiration.to_xml()
         if self.transition is not None:
             s += self.transition.to_xml()
+        if self.abortUpload is not None:
+            s += self.abortUpload.to_xml()
+        if self.ncTransition is not None:
+            s += self.ncTransition.to_xml()
+        if self.ncExpiration is not None:
+            s += self.ncExpiration.to_xml()
         s += '</Rule>'
+        return s
+
+class AbortUpload(object):
+    def __init__(self, days = None):
+        self.days = days
+    def startElement(self, name, attrs, connection):
+        return None
+    def endElement(self, name, value, connection):
+        if name == 'DaysAfterInitiation':
+            self.days = int(value)
+    def __repr__(self):
+        how_long = "in: %s days" % self.days
+        return '<AbortUpload: %s>' % how_long
+    def to_xml(self):
+        s = ''
+        if self.days is not None:
+            s = '<AbortIncompleteMultipartUpload>'
+            s += '<DaysAfterInitiation>%s</DaysAfterInitiation>' % self.days
+            s += '</AbortIncompleteMultipartUpload>'
         return s
 
 class Expiration(object):
@@ -107,9 +154,11 @@ class Expiration(object):
     :ivar date: The date when the object will expire. Must be
         in ISO 8601 format.
     """
-    def __init__(self, days=None, date=None):
+    def __init__(self, days=None, date=None, ncDays = None, eodm = None):
         self.days = days
         self.date = date
+        self.noncurrentDays = ncDays
+        self.eodm = eodm
 
     def startElement(self, name, attrs, connection):
         return None
@@ -119,6 +168,10 @@ class Expiration(object):
             self.days = int(value)
         elif name == 'Date':
             self.date = value
+        elif name == 'NoncurrentDays':
+            self.noncurrentDays = value
+        elif name == 'ExpiredObjectDeleteMarker':
+            self.eodm = value
 
     def __repr__(self):
         if self.days is None:
@@ -128,12 +181,20 @@ class Expiration(object):
         return '<Expiration: %s>' % how_long
 
     def to_xml(self):
-        s = '<Expiration>'
-        if self.days is not None:
-            s += '<Days>%s</Days>' % self.days
-        elif self.date is not None:
-            s += '<Date>%s</Date>' % self.date
-        s += '</Expiration>'
+        s = ''
+        if self.noncurrentDays is not None:
+            s = '<NoncurrentVersionExpiration>'
+            s += '<NoncurrentDays>%s</NoncurrentDays>' % self.noncurrentDays
+            s += '</NoncurrentVersionExpiration>'
+        elif self.days is not None or self.date is not None or self.eodm is not None:
+            s = '<Expiration>'
+            if self.days is not None:
+                s += '<Days>%s</Days>' % self.days
+            elif self.date is not None:
+                s += '<Date>%s</Date>' % self.date
+            elif self.eodm is not None:
+                s += '<ExpiredObjectDeleteMarker>%s</ExpiredObjectDeleteMarker>' % self.eodm
+            s += '</Expiration>'
         return s
 
 class Transition(object):
@@ -148,11 +209,12 @@ class Transition(object):
     :ivar storage_class: The storage class to transition to.  Valid
         values are GLACIER, STANDARD_IA.
     """
-    def __init__(self, days=None, date=None, storage_class=None):
+    def __init__(self, days=None, date=None, ncDays=None, storage_class=None):
         self.days = days
         self.date = date
         self.storage_class = storage_class
-
+        self.ncDays = ncDays
+        #print "days = %s, date = %s, ncDays = %s, storage_class = %s" % (days, date, ncDays, storage_class)
     def __repr__(self):
         if self.days is None:
             how_long = "on: %s" % self.date
@@ -161,13 +223,20 @@ class Transition(object):
         return '<Transition: %s, %s>' % (how_long, self.storage_class)
 
     def to_xml(self):
-        s = '<Transition>'
-        s += '<StorageClass>%s</StorageClass>' % self.storage_class
-        if self.days is not None:
-            s += '<Days>%s</Days>' % self.days
-        elif self.date is not None:
-            s += '<Date>%s</Date>' % self.date
-        s += '</Transition>'
+        s = ''
+        if self.ncDays is not None:
+            s = '<NoncurrentVersionTransition>'
+            s += '<StorageClass>%s</StorageClass>' % self.storage_class
+            s += '<NoncurrentDays>%s</NoncurrentDays>' % self.ncDays
+            s += '</NoncurrentVersionTransition>'
+        elif self.days is not None or self.date is not None:
+            s = '<Transition>'
+            s += '<StorageClass>%s</StorageClass>' % self.storage_class
+            if self.days is not None:
+                s += '<Days>%s</Days>' % self.days
+            elif self.date is not None:
+                s += '<Date>%s</Date>' % self.date
+            s += '</Transition>'
         return s
 
 class Transitions(list):
@@ -180,6 +249,7 @@ class Transitions(list):
         self.temp_days = None
         self.temp_date = None
         self.temp_storage_class = None
+        self.temp_ncDays = None
 
     def startElement(self, name, attrs, connection):
         return None
@@ -191,12 +261,14 @@ class Transitions(list):
             self.temp_date = value
         elif name == 'StorageClass':
             self.temp_storage_class = value
+        elif name == 'NoncurrentDays':
+            self.temp_ncDays = int(value)
 
         # the XML does not contain a <Transitions> tag
         # but rather N number of <Transition> tags not
         # structured in any sort of hierarchy.
         if self.current_transition_property == self.transition_properties:
-            self.append(Transition(self.temp_days, self.temp_date, self.temp_storage_class))
+            self.append(Transition(self.temp_days, self.temp_date, self.temp_ncDays, self.temp_storage_class))
             self.temp_days = self.temp_date = self.temp_storage_class = None
             self.current_transition_property = 1
         else:
@@ -212,7 +284,8 @@ class Transitions(list):
             s += transition.to_xml()
         return s
 
-    def add_transition(self, days=None, date=None, storage_class=None):
+    def add_transition(self, days=None, date=None, ncDays=None,
+                       storage_class = None):
         """
         Add a transition to this Lifecycle configuration.  This only adds
         the rule to the local copy.  To install the new rule(s) on
@@ -227,7 +300,7 @@ class Transitions(list):
         :ivar storage_class: The storage class to transition to.  Valid
             values are GLACIER, STANDARD_IA.
         """
-        transition = Transition(days, date, storage_class)
+        transition = Transition(days, date, ncDays, storage_class)
         self.append(transition)
 
     def __first_or_default(self, prop):
@@ -282,7 +355,8 @@ class Lifecycle(list):
         return s
 
     def add_rule(self, id=None, prefix='', status='Enabled',
-                 expiration=None, transition=None):
+                 expiration=None, transition=None, abortUpload=None,
+                 ncExpiration = None, ncTranstion = None):
         """
         Add a rule to this Lifecycle configuration.  This only adds
         the rule to the local copy.  To install the new rule(s) on
@@ -311,5 +385,6 @@ class Lifecycle(list):
         :param transition: Indicates when an object transitions to a
             different storage class. 
         """
-        rule = Rule(id, prefix, status, expiration, transition)
+        rule = Rule(id, prefix, status, expiration, transition, abortUpload, 
+                    ncExpiration, ncTransition)
         self.append(rule)
