@@ -186,11 +186,12 @@ class Expiration(object):
             s = '<NoncurrentVersionExpiration>'
             s += '<NoncurrentDays>%s</NoncurrentDays>' % self.noncurrentDays
             s += '</NoncurrentVersionExpiration>'
-        elif self.days is not None or self.date is not None or self.eodm is not None:
+        
+        if self.days is not None or self.date is not None or self.eodm is not None:
             s = '<Expiration>'
-            if self.days is not None:
+            if self.days is not None and self.noncurrentDays is None:
                 s += '<Days>%s</Days>' % self.days
-            elif self.date is not None:
+            elif self.date is not None and self.noncurrentDays is None:
                 s += '<Date>%s</Date>' % self.date
             elif self.eodm is not None:
                 s += '<ExpiredObjectDeleteMarker>%s</ExpiredObjectDeleteMarker>' % self.eodm
