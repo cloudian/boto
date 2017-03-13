@@ -42,6 +42,15 @@ class Rule(object):
     :ivar transition: An instance of `Transition`.  This indicates
         when to transition to a different storage class.
 
+    :ivar abortUpload: An instance of `AbortUpload`. This indicates when
+        incomplete multi-part uploads will be aborted.
+
+    :ivar ncExpiration: An instance of `Expiration`. This indicates
+        the lifetime of non-current objects that are subject to the rule.
+
+    :ivar ncTransition: An instance of `Transition`. This indicates when
+        non-current objects transitions to a different storage class. 
+
     """
     def __init__(self, id=None, prefix=None, status=None, expiration=None,
                  transition=None, abortUpload = None, ncExpiration = None,
@@ -127,6 +136,11 @@ class Rule(object):
         return s
 
 class AbortUpload(object):
+    """
+    When an incomplete multi-part upload will abort.
+
+    :ivar days: The number of days until the MPU will abort
+    """
     def __init__(self, days = None):
         self.days = days
     def startElement(self, name, attrs, connection):
@@ -357,7 +371,7 @@ class Lifecycle(list):
 
     def add_rule(self, id=None, prefix='', status='Enabled',
                  expiration=None, transition=None, abortUpload=None,
-                 ncExpiration = None, ncTranstion = None):
+                 ncExpiration = None, ncTransition = None):
         """
         Add a rule to this Lifecycle configuration.  This only adds
         the rule to the local copy.  To install the new rule(s) on
@@ -377,14 +391,27 @@ class Lifecycle(list):
         :param status: If 'Enabled', the rule is currently being applied.
             If 'Disabled', the rule is not currently being applied.
 
-        :type expiration: int
-        :param expiration: Indicates the lifetime, in days, of the objects
-            that are subject to the rule. The value must be a non-zero
-            positive integer. A Expiration object instance is also perfect.
-
         :type transition: Transitions
         :param transition: Indicates when an object transitions to a
-            different storage class. 
+            different storage class.
+
+        :type ncTransition: Transitions
+        : param ncTransition: Indicates when a non-current object transitions
+            to a different storage class.
+
+        :type abortUpload: AbortUpload
+        :param abortUpload: Indicates when an incomplete multi-part upload
+            to be terminated.
+
+        :type expiration: Expiration
+        :param expiration: Indicates when an object expires, in either a 
+            certain number of days or at a certain date. 
+
+        :type ncExpiration: Expiration
+        :param ncExpiration: Indicates when a non-current object expires, in 
+            number of days of becoming non-current. Also indicates if the 
+            expired delete markers shall be automatically expired.
+
         """
         rule = Rule(id, prefix, status, expiration, transition, abortUpload, 
                     ncExpiration, ncTransition)
