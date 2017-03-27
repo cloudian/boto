@@ -109,7 +109,7 @@ class Key(object):
 
 
 
-    def __init__(self, bucket=None, name=None):
+    def __init__(self, bucket=None, name=None, version_id=None):
         self.bucket = bucket
         self.name = name
         self.metadata = {}
@@ -129,7 +129,7 @@ class Key(object):
         self.resp = None
         self.mode = None
         self.size = None
-        self.version_id = None
+        self.version_id = version_id
         self.source_version_id = None
         self.delete_marker = False
         self.encrypted = None
@@ -2429,10 +2429,13 @@ class Key(object):
         md5 = compute_md5(BytesIO(data))
         headers = headers or {}
         headers['Content-MD5'] = md5[1]
+        qargs = 'restore'
+        if self.version_id is not None:
+            qargs = 'restore&versionId=' + self.version_id
         response = self.bucket.connection.make_request(
             'POST', self.bucket.name, self.name,
             data=data,
-            headers=headers, query_args='restore')
+            headers=headers, query_args=qargs)
         if response.status not in (200, 202):
             provider = self.bucket.connection.provider
             raise provider.storage_response_error(response.status,
