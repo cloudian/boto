@@ -120,7 +120,9 @@ class Rule(object):
         s = '<Rule>'
         if self.id is not None:
             s += '<ID>%s</ID>' % self.id
+        s += '<Filter>'
         s += '<Prefix>%s</Prefix>' % self.prefix
+        s += '</Filter>'
         s += '<Status>%s</Status>' % self.status
         if self.expiration is not None:
             s += self.expiration.to_xml()
