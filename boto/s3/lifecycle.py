@@ -52,11 +52,12 @@ class Rule(object):
         non-current objects transitions to a different storage class. 
 
     """
-    def __init__(self, id=None, prefix=None, status=None, expiration=None,
-                 transition=None, abortUpload = None, ncExpiration = None,
-                 ncTransition = None):
+    def __init__(self, id=None, prefix=None, filter=None, status=None,
+                 expiration=None, transition=None, abortUpload = None,
+                 ncExpiration = None, ncTransition = None):
         self.id = id
         self.prefix = '' if prefix is None else prefix
+        self.filter = filter
         self.status = status
         if isinstance(expiration, six.integer_types):
             # retain backwards compatibility???
@@ -111,6 +112,8 @@ class Rule(object):
             self.id = value
         elif name == 'Prefix':
             self.prefix = value
+        elif name == 'Filter':
+            self.filter = True
         elif name == 'Status':
             self.status = value
         else:
@@ -120,9 +123,12 @@ class Rule(object):
         s = '<Rule>'
         if self.id is not None:
             s += '<ID>%s</ID>' % self.id
-        s += '<Filter>'
-        s += '<Prefix>%s</Prefix>' % self.prefix
-        s += '</Filter>'
+        if self.filter is not None:
+            s += '<Filter>'
+            s += '<Prefix>%s</Prefix>' % self.prefix
+            s += '</Filter>'
+        else:
+            s += '<Prefix>%s</Prefix>' % self.prefix
         s += '<Status>%s</Status>' % self.status
         if self.expiration is not None:
             s += self.expiration.to_xml()
@@ -371,7 +377,7 @@ class Lifecycle(list):
         s += '</LifecycleConfiguration>'
         return s
 
-    def add_rule(self, id=None, prefix='', status='Enabled',
+    def add_rule(self, id=None, prefix='', filter=None, status='Enabled',
                  expiration=None, transition=None, abortUpload=None,
                  ncExpiration = None, ncTransition = None):
         """
@@ -388,6 +394,10 @@ class Lifecycle(list):
         :type prefix: str
         :iparam prefix: Prefix identifying one or more objects to which the
             rule applies.
+
+        :type filter: str
+        :iparam filter: If not None, <Filter> and </Filter> elements will
+            be added in lifecycle xml rule.
 
         :type status: str
         :param status: If 'Enabled', the rule is currently being applied.
@@ -415,6 +425,6 @@ class Lifecycle(list):
             expired delete markers shall be automatically expired.
 
         """
-        rule = Rule(id, prefix, status, expiration, transition, abortUpload, 
-                    ncExpiration, ncTransition)
+        rule = Rule(id, prefix, filter, status, expiration, transition,
+                    abortUpload, ncExpiration, ncTransition)
         self.append(rule)
