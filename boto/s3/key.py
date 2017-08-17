@@ -31,11 +31,15 @@ import binascii
 import math
 import random
 import string
+import xml.sax
+import xml.sax.saxutils
+
 from hashlib import md5
 import boto.utils
 from socket import error as SocketError
 from email.header import Header
-from boto.compat import BytesIO, six, urllib, encodebytes, json
+from boto import handler
+from boto.compat import BytesIO, six, urllib, encodebytes, json, StringIO
 
 from boto.auth import sigv4_streaming
 from boto.exception import BotoClientError
@@ -43,6 +47,7 @@ from boto.exception import StorageDataError
 from boto.exception import PleaseRetryException
 from boto.provider import Provider
 from boto.s3.keyfile import KeyFile
+from boto.s3.tagging import Tags
 from boto.s3.user import User
 from boto import UserAgent
 from boto.utils import compute_md5, compute_hash
@@ -121,6 +126,7 @@ class Key(object):
         self.filename = None
         self.etag = None
         self.hyperstore = None
+        self.tagging_count = None
         self.is_latest = False
         self.last_modified = None
         self.owner = None
@@ -231,6 +237,14 @@ class Key(object):
             base64md5 = base64md5[0:-1]
         return (md5_hexdigest, base64md5)
 
+    def handle_tagging_count_headers(self, resp):
+        provider = self.bucket.connection.provider
+        if provider.tagging_count_header:
+            self.tagging_count = resp.getheader(
+                provider.tagging_count_header, None)
+        else:
+            self.tagging_count = None
+
     def handle_encryption_headers(self, resp):
         provider = self.bucket.connection.provider
         if provider.server_side_encryption_header:
@@ -339,6 +353,7 @@ class Key(object):
             self.handle_encryption_headers(self.resp)
             self.handle_replication_headers(self.resp)
             self.handle_restore_headers(self.resp)
+            self.handle_tagging_count_headers(self.resp)
             self.handle_addl_headers(self.resp.getheaders())
 
     def open_write(self, headers=None, override_num_retries=None):
@@ -2426,3 +2441,58 @@ class Key(object):
             raise provider.storage_response_error(response.status,
                                                   response.reason,
                                                   response.read())
+
+    def get_tags(self):
+        response = self.get_xml_tags()
+        tags = Tags()
+        h = handler.XmlHandler(tags, self)
+        if not isinstance(response, bytes):
+            response = response.encode('utf-8')
+        xml.sax.parseString(response, h)
+        return tags
+
+    def get_xml_tags(self):
+        response = self.bucket.connection.make_request(
+            'GET', self.bucket.name, self.name,
+             query_args='tagging', headers=None)
+        body = response.read()
+        if response.status == 200:
+            return body
+        else:
+            raise self.bucket.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def set_tags(self, tags, headers=None):
+        return self.set_xml_tags(tags.to_xml(), headers=headers)
+
+    def set_xml_tags(self, tag_str, headers=None, query_args='tagging'):
+        if headers is None:
+            headers = {}
+        md5 = boto.utils.compute_md5(StringIO(tag_str))
+        headers['Content-MD5'] = md5[1]
+        headers['Content-Type'] = 'text/xml'
+        if not isinstance(tag_str, bytes):
+            tag_str = tag_str.encode('utf-8')
+        response = self.bucket.connection.make_request(
+            'PUT', self.bucket.name, self.name,
+            data=tag_str,
+            query_args=query_args,
+            headers=headers)
+        body = response.read()
+        if response.status != 200:
+            raise self.bucket.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+        return True
+
+    def delete_tags(self, headers=None):
+        response = self.bucket.connection.make_request(
+            'DELETE', self.bucket.name, self.name,
+            query_args='tagging', headers=headers)
+        body = response.read()
+        boto.log.debug(body)
+        if response.status == 204:
+            return True
+        else:
+            raise self.bucket.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+

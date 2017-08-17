@@ -63,6 +63,7 @@ SERVER_SIDE_ENCRYPTION_KEY = 'server-side-encryption-header'
 REPLICATION_HEADER_KEY = 'replication-header'
 VERSION_ID_HEADER_KEY = 'version-id-header'
 RESTORE_HEADER_KEY = 'restore-header'
+TAGGING_COUNT_HEADER_KEY = 'tagging-count-header'
 
 STORAGE_COPY_ERROR = 'StorageCopyError'
 STORAGE_CREATE_ERROR = 'StorageCreateError'
@@ -138,6 +139,7 @@ class Provider(object):
             STORAGE_CLASS_HEADER_KEY: AWS_HEADER_PREFIX + 'storage-class',
             MFA_HEADER_KEY: AWS_HEADER_PREFIX + 'mfa',
             RESTORE_HEADER_KEY: AWS_HEADER_PREFIX + 'restore',
+            TAGGING_COUNT_HEADER_KEY: AWS_HEADER_PREFIX + 'tagging-count',
         },
         'google': {
             HEADER_PREFIX_KEY: GOOG_HEADER_PREFIX,
@@ -162,6 +164,7 @@ class Provider(object):
             STORAGE_CLASS_HEADER_KEY: None,
             MFA_HEADER_KEY: None,
             RESTORE_HEADER_KEY: None,
+            TAGGING_COUNT_HEADER_KEY: None,
         }
     }
 
@@ -468,6 +471,7 @@ class Provider(object):
         self.version_id = header_info_map[VERSION_ID_HEADER_KEY]
         self.mfa_header = header_info_map[MFA_HEADER_KEY]
         self.restore_header = header_info_map[RESTORE_HEADER_KEY]
+        self.tagging_count_header = header_info_map[TAGGING_COUNT_HEADER_KEY]
 
     def configure_errors(self):
         error_map = self.ErrorMap[self.name]
