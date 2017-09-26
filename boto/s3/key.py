@@ -2452,9 +2452,12 @@ class Key(object):
         return tags
 
     def get_xml_tags(self):
+        query_args = 'tagging'
+        if self.version_id:
+            query_args += '&versionId=%s' % self.version_id
         response = self.bucket.connection.make_request(
             'GET', self.bucket.name, self.name,
-             query_args='tagging', headers=None)
+             query_args=query_args, headers=None)
         body = response.read()
         if response.status == 200:
             return body
@@ -2473,6 +2476,8 @@ class Key(object):
         headers['Content-Type'] = 'text/xml'
         if not isinstance(tag_str, bytes):
             tag_str = tag_str.encode('utf-8')
+        if self.version_id:
+            query_args += '&versionId=%s' % self.version_id
         response = self.bucket.connection.make_request(
             'PUT', self.bucket.name, self.name,
             data=tag_str,
@@ -2485,9 +2490,12 @@ class Key(object):
         return True
 
     def delete_tags(self, headers=None):
+        query_args = 'tagging'
+        if self.version_id:
+            query_args += '&versionId=%s' % self.version_id
         response = self.bucket.connection.make_request(
             'DELETE', self.bucket.name, self.name,
-            query_args='tagging', headers=headers)
+            query_args=query_args, headers=headers)
         body = response.read()
         boto.log.debug(body)
         if response.status == 204:
