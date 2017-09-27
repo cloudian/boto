@@ -1825,6 +1825,60 @@ class Bucket(object):
         l.append('.'.join(self.connection.host.split('.')[-2:]))
         return '.'.join(l)
 
+    def get_lock_policy(self, headers=None):
+        """
+        Returns the JSON policy associated with the bucket.  The policy
+        is returned as an uninterpreted JSON string.
+        """
+        response = self.connection.make_request('GET', self.name,
+                query_args='lock-policy', headers=headers)
+        body = response.read()
+        if response.status == 200:
+            return body
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def set_lockId(self, lockId, headers=None):
+        query_args = 'lock-policy'
+        if lockId is not None:
+            query_args += '&lockId=%s' % lockId
+        response = self.connection.make_request('POST', self.name,
+                                                query_args=query_args,
+                                                headers=headers)
+        body = response.read()
+        if response.status != 204:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def set_lock_policy(self, policy, headers=None):
+        """
+        Add or replace the JSON policy associated with the bucket.
+
+        :type policy: str
+        :param policy: The JSON policy as a string.
+        """
+        response = self.connection.make_request('POST', self.name,
+                                                data=policy,
+                                                query_args='lock-policy',
+                                                headers=headers)
+        body = response.read()
+        if response.status == 201:
+            lockId = response.getheader('x-hs-lock-id')
+            return lockId           
+        else: 
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def delete_lock_policy(self, headers=None):
+        response = self.connection.make_request('DELETE', self.name,
+                                                query_args='lock-policy',
+                                                headers=headers)
+        body = response.read()
+        if response.status != 204:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
     def get_policy(self, headers=None):
         """
         Returns the JSON policy associated with the bucket.  The policy
