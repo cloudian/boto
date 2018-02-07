@@ -2412,6 +2412,24 @@ class Key(object):
                             metadata=metadata, preserve_acl=preserve_acl,
                             headers=headers)
 
+    def select_object_content(self, data, headers=None):
+        md5 = compute_md5(BytesIO(data))
+        headers = headers or {}
+        headers['Content-MD5'] = md5[1]
+        qargs = 'select'
+        if self.version_id is not None:
+            qargs = 'select&versionId=' + self.version_id
+        response = self.bucket.connection.make_request(
+            'POST', self.bucket.name, self.name,
+            data=data,
+            headers=headers, query_args=qargs)
+        if response.status != 200:
+            provider = self.bucket.connection.provider
+            raise provider.storage_response_error(response.status,
+                                                  response.reason,
+                                                  response.read())
+        return response.read()
+
     def restore(self, days, headers=None):
         """Restore an object from an archive.
 
