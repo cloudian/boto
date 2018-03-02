@@ -1930,3 +1930,63 @@ class IAMConnection(AWSQueryConnection):
         """
         params = {'PolicyArn': policy_arn, 'UserName': user_name}
         return self.get_response('DetachUserPolicy', params)
+
+    def list_attached_group_policies(self, group_name, marker=None, max_items=None,
+                                     path_prefix=None):
+        """
+        List Attached Group policies.
+
+        :type group_name: string
+        :param group_name: The name of the group the policy is associated with.
+
+        :type marker: string
+        :param marker: A marker used for pagination (received from previous
+            accesses)
+
+        :type max_items: int
+        :param max_items: Send only max_items; allows paginations
+
+        :type path_prefix: string
+        :param path_prefix: Send only items prefixed by this path
+        """
+        params = {'GroupName': group_name}
+        if path_prefix is not None:
+            params['PathPrefix'] = path_prefix
+        if marker is not None:
+            params['Marker'] = marker
+        if max_items is not None:
+            params['MaxItems'] = max_items
+        return self.get_response(
+            'ListAttachedGroupPolicies',
+            params,
+            list_marker='AttachedPolicies')
+
+    def list_attached_user_policies(self, user_name, marker=None, max_items=None,
+                                    path_prefix=None):
+        """
+        List Attached User policies.
+
+        :type user_name: string
+        :param user_name: The name of the user the policy is associated with.
+
+        :type marker: string
+        :param marker: A marker used for pagination (received from previous
+            accesses)
+
+        :type max_items: int
+        :param max_items: Send only max_items; allows paginations
+
+        :type path_prefix: string
+        :param path_prefix: Send only items prefixed by this path
+        """
+        params = {'UserName': user_name}
+        if path_prefix is not None:
+            params['PathPrefix'] = path_prefix
+        if marker is not None:
+            params['Marker'] = marker
+        if max_items is not None:
+            params['MaxItems'] = max_items
+        return self.get_response(
+            'ListAttachedUserPolicies',
+            params,
+            list_marker='AttachedPolicies')
