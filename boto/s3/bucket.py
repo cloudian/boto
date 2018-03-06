@@ -1825,6 +1825,35 @@ class Bucket(object):
         l.append('.'.join(self.connection.host.split('.')[-2:]))
         return '.'.join(l)
 
+    def get_notification(self, headers=None):
+        """
+        Returns the notification configuration associated with the bucket.
+        """
+        response = self.connection.make_request('GET', self.name,
+                query_args='notification', headers=headers)
+        body = response.read()
+        if response.status == 200:
+            return body
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def put_notification(self, notification, headers=None):
+        """
+        Add or replace the notification configuration associated with the bucket.
+
+        :type notification: str
+        :param notification: The notification configuration as a string.
+        """
+        response = self.connection.make_request('PUT', self.name,
+                                                data=notification,
+                                                query_args='notification',
+                                                headers=headers)
+        body = response.read()
+        if response.status != 200:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
     def get_lock_policy(self, headers=None):
         """
         Returns the JSON policy associated with the bucket.  The policy
