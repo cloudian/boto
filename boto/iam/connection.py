@@ -101,6 +101,26 @@ class IAMConnection(AWSQueryConnection):
             boto.log.error('%s' % body)
             raise self.ResponseError(response.status, response.reason, body)
 
+    def get_rbac_response(self, action, params, path='/', verb='POST'):
+        """
+        Utility method to handle calls to IAM and parsing of responses.
+        """
+        self.APIVersion = None
+        response = self.make_request(action, params, path, verb)
+        body = response.read()
+        boto.log.debug(body)
+        if response.status == 200:
+            if body:
+                return body
+            else:
+                # Support empty responses, e.g. deleting a SAML provider
+                # according to the official documentation.
+                return {}
+        else:
+            boto.log.error('%s %s' % (response.status, response.reason))
+            boto.log.error('%s' % body)
+            raise self.ResponseError(response.status, response.reason, body)
+
     #
     # Group methods
     #
@@ -1990,3 +2010,116 @@ class IAMConnection(AWSQueryConnection):
             'ListAttachedUserPolicies',
             params,
             list_marker='AttachedPolicies')
+
+    def get_bill(self, period, userid=None):
+        params = {'BillingPeriod': period}
+        if userid:
+            params['CanonicalUserId'] = userid
+        return self.get_rbac_response('GetBill', params)
+
+    def get_cloudian_group(self, gid):
+        params = {'GroupId': gid}
+        return self.get_rbac_response('GetCloudianGroup', params)
+
+    def get_cloudian_user(self, gid, uid):
+        params = {'GroupId': gid, 'UserId': uid}
+        return self.get_rbac_response('GetCloudianUser', params)
+
+    def get_cloudian_user_list(self, gid, type, status, prefix=None, limit=None, offset=None):
+        params = {'GroupId': gid, 'UserType': type, 'UserStatus': status}
+        if prefix:
+            params['Prefix'] = prefix
+        if limit:
+            params['Limit'] = limit
+        if offset:
+            params['Offset'] = offset
+        return self.get_rbac_response('GetCloudianUserList', params)
+
+    def get_cloudian_user_credentials(self, akey):
+        params = {'AccessKey': akey}
+        return self.get_rbac_response('GetCloudianUserCredentials', params)
+
+    def get_cloudian_user_credentials_list(self, gid=None, uid=None, userid=None, rootonly=None):
+        params = {}
+        if userid:
+            # CanonicalUserId
+            params['CanonicalUserId'] = userid
+        elif gid is not None and uid is not None:
+            params = {'GroupId': gid, 'UserId': uid}
+        if rootonly:
+            params['RootAccountOnly'] = rootonly
+        return self.get_rbac_response('GetCloudianUserCredentalsList', params)
+
+    def get_cloudian_user_credentials_list_active(self, gid, uid):
+        params = {'GroupId': gid, 'UserId': uid}
+        return self.get_rbac_response('GetCloudianUserCredentialsListActive', params)
+
+    def get_qos_limit(self, gid, uid, region=None):
+        params = {'GroupId': gid, 'UserId': uid}
+        if region:
+            params['Region'] = region
+        return self.get_rbac_response('GetQosLimits', params)
+
+    def get_system_license(self):
+        params = {}
+        return self.get_rbac_response('GetSystemLicense', params)
+
+    def get_system_version(self):
+        params = {}
+        return self.get_rbac_response('GetSystemVersion', params)
+
+    def get_usage(self, op, stime, etime, gra, id=None, userid=None, bucket=None,
+                  reversed=None, page=None, offset=None, region=None, regionoffset=None):
+        params = {}
+        if id:
+            params['Id'] = id
+        elif userid is not None:
+            params['CanonicalUserId'] = userid
+        elif bucket is not None:
+            params['Bucket'] = bucket
+        params['Operation'] = op
+        if stime:
+            params['StartTime'] = stime
+        if etime:
+            params['EndTime'] = etime
+        if gra:
+            params['Granularity'] = gra
+        if reversed:
+            params['IsReversed'] = reversed
+        if page:
+            params['PageSize'] = page
+        if offset:
+            params['Offset'] = offset
+        if region:
+            params['Region'] = region
+        if regionoffset:
+            params['RegionOffset'] = regionoffset
+        return self.get_rbac_response('GetUsage', params)
+
+    def get_cloudian_monitor_events(self, nodeid, showack=None, limit=None, region=None):
+        params = {'NodeId': nodeid}
+        if showack:
+            params['ShowAck'] = showack
+        if limit:
+            params['Limit'] = limit
+        if region:
+            params['Region'] = region
+        return self.get_rbac_response('GetCloudianMonitorEvents', params)
+
+    def get_cloudian_monitor_nodelist(self, region=None):
+        params = {}
+        if region:
+            params['Region'] = region
+        return self.get_rbac_response('GetCloudianMonitorNodeList', params)
+
+    def get_cloudian_monitor_host(self, nodeid, region=None):
+        params = {'NodeId': nodeid}
+        if region:
+            params['Region'] = region
+        return self.get_rbac_response('GetCloudianMonitorHost', params)
+
+    def get_cloudian_monitor_region(self, region=None):
+        params = {}
+        if region:
+            params['Region'] = region
+        return self.get_rbac_response('GetCloudianMonitorRegion', params)
