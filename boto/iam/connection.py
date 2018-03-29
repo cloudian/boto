@@ -2021,6 +2021,16 @@ class IAMConnection(AWSQueryConnection):
         params = {'GroupId': gid}
         return self.get_rbac_response('GetCloudianGroup', params)
 
+    def get_cloudian_group_list(self, prefix=None, limit=None, offset=None):
+        params = {}
+        if prefix:
+            params['Prefix'] = prefix
+        if limit:
+            params['Limit'] = limit
+        if offset:
+            params['Offset'] = offset
+        return self.get_rbac_response('GetCloudianGroupList', params)
+
     def get_cloudian_user(self, gid, uid):
         params = {'GroupId': gid, 'UserId': uid}
         return self.get_rbac_response('GetCloudianUser', params)
