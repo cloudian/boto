@@ -2416,9 +2416,9 @@ class Key(object):
         md5 = compute_md5(BytesIO(data))
         headers = headers or {}
         headers['Content-MD5'] = md5[1]
-        qargs = 'select'
+        qargs = 'select&select-type=2'
         if self.version_id is not None:
-            qargs = 'select&versionId=' + self.version_id
+            qargs += '&versionId=' + self.version_id
         response = self.bucket.connection.make_request(
             'POST', self.bucket.name, self.name,
             data=data,
