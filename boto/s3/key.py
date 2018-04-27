@@ -1401,20 +1401,23 @@ class Key(object):
             if isinstance(md5, bytes):
                 md5 = md5.decode('utf-8')
 
-            # If you use customer-provided encryption keys, the ETag value that
-            # Amazon S3 returns in the response will not be the MD5 of the
-            # object.
+            # If you use customer-provided encryption keys or aws:kms managed
+            # keys, the ETag value that Amazon S3 returns in the response will
+            # not be the MD5 of the object.
             amz_server_side_encryption_customer_algorithm = response.getheader(
                 'x-amz-server-side-encryption-customer-algorithm', None)
+            amz_server_side_encryption = response.getheader(
+                'x-amz-server-side-encryption', None)
             # The same is applicable for KMS-encrypted objects in gs buckets.
             goog_customer_managed_encryption = response.getheader(
                 'x-goog-encryption-kms-key-name', None)
             if (amz_server_side_encryption_customer_algorithm is None and
                     goog_customer_managed_encryption is None):
-                if self.etag != '"%s"' % md5:
-                    raise provider.storage_data_error(
-                        'ETag from S3 did not match computed MD5. '
-                        '%s vs. %s' % (self.etag, self.md5))
+                if server_side_encryption != 'aws:kms':
+                    if self.etag != '"%s"' % md5:
+                        raise provider.storage_data_error(
+                            'ETag from S3 did not match computed MD5. '
+                            '%s vs. %s' % (self.etag, self.md5))
 
             return True
 
