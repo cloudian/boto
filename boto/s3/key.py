@@ -476,7 +476,7 @@ class Key(object):
 
     def copy(self, dst_bucket, dst_key, metadata=None,
              reduced_redundancy=False, preserve_acl=False,
-             encrypt_key=False, validate_dst_bucket=True):
+             encrypt_key=None, validate_dst_bucket=True):
         """
         Copy this Key to another bucket.
 
@@ -509,10 +509,11 @@ class Key(object):
             don't care about the ACL, a value of False will be
             significantly more efficient.
 
-        :type encrypt_key: bool
-        :param encrypt_key: If True, the new copy of the object will
-            be encrypted on the server-side by S3 and will be stored
-            in an encrypted form while at rest in S3.
+        :type encrypt_key: string
+        :param encrypt_key: If AES256 or aws:kms, the new copy of the
+            object will be encrypted with the specified key on the
+            server-side by S3 and will be stored in an encrypted form
+            while at rest in S3.
 
         :type validate_dst_bucket: bool
         :param validate_dst_bucket: If True, will validate the dst_bucket
@@ -664,7 +665,7 @@ class Key(object):
     def generate_url(self, expires_in, method='GET', headers=None,
                      query_auth=True, force_http=False, response_headers=None,
                      expires_in_absolute=False, version_id=None,
-                     policy=None, reduced_redundancy=False, encrypt_key=False):
+                     policy=None, reduced_redundancy=False, encrypt_key=None):
         """
         Generate a URL to access this key.
 
@@ -707,10 +708,11 @@ class Key(object):
             Redundancy Storage (RRS) feature of S3, provides lower
             redundancy at lower storage cost.
 
-        :type encrypt_key: bool
-        :param encrypt_key: If True, the new copy of the object will
-            be encrypted on the server-side by S3 and will be stored
-            in an encrypted form while at rest in S3.
+        :type encrypt_key: string
+        :param encrypt_key: If AES256 or aws:kms, the new copy of the
+            object will be encrypted with the specified key on the
+            server-side by S3 and will be stored in an encrypted form
+            while at rest in S3.
 
         :rtype: string
         :return: The URL to access the key
@@ -729,8 +731,8 @@ class Key(object):
             self.storage_class = 'REDUCED_REDUNDANCY'
             if provider.storage_class_header:
                 headers[provider.storage_class_header] = self.storage_class
-        if encrypt_key:
-            headers[provider.server_side_encryption_header] = 'AES256'
+        if encrypt_key is not None:
+            headers[provider.server_side_encryption_header] = encrypt_key
         headers = boto.utils.merge_meta(headers, self.metadata, provider)
 
         return self.bucket.connection.generate_url(expires_in, method,
@@ -1549,7 +1551,7 @@ class Key(object):
     def set_contents_from_file(self, fp, headers=None, replace=True,
                                cb=None, num_cb=10, policy=None, md5=None,
                                reduced_redundancy=False, query_args=None,
-                               encrypt_key=False, size=None, rewind=False):
+                               encrypt_key=None, size=None, rewind=False):
         """
         Store an object in S3 using the name of the Key object as the
         key in S3 and the contents of the file pointed to by 'fp' as the
@@ -1603,10 +1605,11 @@ class Key(object):
             Redundancy Storage (RRS) feature of S3, provides lower
             redundancy at lower storage cost.
 
-        :type encrypt_key: bool
-        :param encrypt_key: If True, the new copy of the object will
-            be encrypted on the server-side by S3 and will be stored
-            in an encrypted form while at rest in S3.
+        :type encrypt_key: string
+        :param encrypt_key: If AES256 or aws:kms, the new copy of the
+            object will be encrypted with the specified key on the
+            server-side by S3 and will be stored in an encrypted form
+            while at rest in S3.
 
         :type size: int
         :param size: (optional) The Maximum number of bytes to read
@@ -1629,8 +1632,8 @@ class Key(object):
         headers = headers or {}
         if policy:
             headers[provider.acl_header] = policy
-        if encrypt_key:
-            headers[provider.server_side_encryption_header] = 'AES256'
+        if encrypt_key is not None:
+            headers[provider.server_side_encryption_header] = encrypt_key
 
         if rewind:
             # caller requests reading from beginning of fp.
@@ -1729,7 +1732,7 @@ class Key(object):
     def set_contents_from_filename(self, filename, headers=None, replace=True,
                                    cb=None, num_cb=10, policy=None, md5=None,
                                    reduced_redundancy=False,
-                                   encrypt_key=False):
+                                   encrypt_key=None):
         """
         Store an object in S3 using the name of the Key object as the
         key in S3 and the contents of the file named by 'filename'.
@@ -1779,10 +1782,13 @@ class Key(object):
         :param reduced_redundancy: If True, this will set the storage
             class of the new Key to be REDUCED_REDUNDANCY. The Reduced
             Redundancy Storage (RRS) feature of S3, provides lower
-            redundancy at lower storage cost.  :type encrypt_key: bool
-            :param encrypt_key: If True, the new copy of the object
-            will be encrypted on the server-side by S3 and will be
-            stored in an encrypted form while at rest in S3.
+            redundancy at lower storage cost.
+
+        :type encrypt_key: string
+        :param encrypt_key: If AES256 or aws:kms, the new copy of the
+            object will be encrypted with the specified key on the
+            server-side by S3 and will be stored in an encrypted form
+            while at rest in S3.
 
         :rtype: int
         :return: The number of bytes written to the key.
@@ -1796,7 +1802,7 @@ class Key(object):
     def set_contents_from_string(self, string_data, headers=None, replace=True,
                                  cb=None, num_cb=10, policy=None, md5=None,
                                  reduced_redundancy=False,
-                                 encrypt_key=False):
+                                 encrypt_key=None):
         """
         Store an object in S3 using the name of the Key object as the
         key in S3 and the string 's' as the contents.
@@ -1845,10 +1851,12 @@ class Key(object):
             Redundancy Storage (RRS) feature of S3, provides lower
             redundancy at lower storage cost.
 
-        :type encrypt_key: bool
-        :param encrypt_key: If True, the new copy of the object will
-            be encrypted on the server-side by S3 and will be stored
-            in an encrypted form while at rest in S3.
+        :type encrypt_key: string
+        :param encrypt_key: If AES256 or aws:kms, the new copy of the
+            object will be encrypted with the specified key on the
+            server-side by S3 and will be stored in an encrypted form
+            while at rest in S3.
+
         """
         if not isinstance(string_data, bytes):
             string_data = string_data.encode("utf-8")
@@ -1861,7 +1869,7 @@ class Key(object):
 
     def post_contents_from_file(self, fp, headers=None, post_policy=None,
                                 fields={}, policy=None,
-                                reduced_redundancy=False, encrypt_key=False):
+                                reduced_redundancy=False, encrypt_key=None):
         """
         Store an object in S3 using the name of the Key object
         as the key in S3 and the contents of the file pointed to
@@ -1896,10 +1904,11 @@ class Key(object):
             Redundancy Storage (RRS) feature of S3, provides lower
             redundancy at lower storage cost.
 
-        :type encrypt_key: bool
-        :param encrypt_key: If True, the new copy of the object will
-            be encrypted on the server-side by S3 and will be stored
-            in an encrypted form while at rest in S3.
+        :type encrypt_key: string
+        :param encrypt_key: If AES256 or aws:kms, the new copy of the
+            object will be encrypted with the specified key on the
+            server-side by S3 and will be stored in an encrypted form
+            while at rest in S3.
 
         :rtype: int
         :return: The number of bytes written to the key.
@@ -1908,8 +1917,8 @@ class Key(object):
         fields = fields or {}
         if policy:
             fields['acl'] = policy
-        if encrypt_key:
-            fields[provider.server_side_encryption_header] = 'AES256'
+        if encrypt_key is not None:
+            fields[provider.server_side_encryption_header] = encrypt_key
             decode_json_data = json.loads(post_policy)
             decode_json_data['conditions'].append(('starts-with', '$%s' % provider.server_side_encryption_header, ''))
             post_policy = json.dumps(decode_json_data)
@@ -1935,7 +1944,7 @@ class Key(object):
     def post_contents_from_string(self, string_data, headers=None,
                                   post_policy=None, fields={}, policy=None,
                                   reduced_redundancy=False,
-                                  encrypt_key=False):
+                                  encrypt_key=None):
         if not isinstance(string_data, bytes):
             string_data = string_data.encode("utf-8")
         fp = BytesIO(string_data)
