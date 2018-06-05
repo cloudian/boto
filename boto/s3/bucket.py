@@ -2270,3 +2270,62 @@ class Bucket(object):
         else:
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
+
+    def make_encryption_body(self, ssealgorithm, kmsmasterkeyid=None):
+        s = '<?xml version="1.0" encoding="UTF-8"?>\n'
+        s += '  <ServerSideEncryptionConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">\n'
+        s += '    <Rule>\n'
+        s += '      <ApplyServerSideEncryptionByDefault>\n'
+        s += '        <SSEAlgorithm>%s</SSEAlgorithm>\n' % ssealgorithm
+        if kmsmasterkeyid is not None:
+            s += '        <KMSMasterKeyID>%s</KMSMasterKeyID>\n' % kmsmasterkeyid
+        s += '      </ApplyServerSideEncryptionByDefault>\n'
+        s += '    </Rule>\n'
+        s += '  </ServerSideEncryptionConfiguration>\n'
+        return s
+
+    def configure_encryption(self, ssealgorithm, kmsmasterkeyid=None, headers=None):
+        """
+        Configure encryption for this bucket.
+
+        :type ssealgorithm: str
+        :param ssealgorithm: The server-side encryption algorithm to use.
+                             AES256 or aws:kms
+
+        :type kmsmasterkeyid: str
+        :param kmsmasterkeyid: The AWS KMS master key ID used for the SSE-KMS
+                               encryption
+
+        :returns: True if the configuration succeeds or else
+                  throws an exception
+        """
+
+        body = self.make_encryption_body(ssealgorithm, kmsmasterkeyid)
+        response = self.connection.make_request('PUT', self.name, data=body,
+                query_args='encryption', headers=headers)
+        body = response.read()
+        if response.status == 200:
+            return True
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def get_encryption_config(self, headers=None):
+        response = self.connection.make_request('GET', self.name,
+                query_args='encryption', headers=headers)
+        body = response.read()
+        if response.status == 200:
+            return body
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def delete_encryption_config(self, headers=None):
+        response = self.connection.make_request('DELETE', self.name,
+                query_args='encryption', headers=headers)
+        body = response.read()
+        if response.status == 204:
+            return True
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
