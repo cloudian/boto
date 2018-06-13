@@ -2015,11 +2015,11 @@ class IAMConnection(AWSQueryConnection):
         params = {'BillingPeriod': period}
         if userid:
             params['CanonicalUserId'] = userid
-        return self.get_rbac_response('GetCloudianBill', params)
+        return self.get_response('GetCloudianBill', params)
 
     def get_cloudian_group(self, gid):
         params = {'GroupId': gid}
-        return self.get_rbac_response('GetCloudianGroup', params)
+        return self.get_response('GetCloudianGroup', params)
 
     def get_cloudian_group_list(self, prefix=None, limit=None, offset=None):
         params = {}
@@ -2029,11 +2029,11 @@ class IAMConnection(AWSQueryConnection):
             params['Limit'] = limit
         if offset:
             params['Offset'] = offset
-        return self.get_rbac_response('GetCloudianGroupList', params)
+        return self.get_response('GetCloudianGroupList', params)
 
     def get_cloudian_user(self, gid, uid):
         params = {'GroupId': gid, 'UserId': uid}
-        return self.get_rbac_response('GetCloudianUser', params)
+        return self.get_response('GetCloudianUser', params)
 
     def get_cloudian_user_list(self, gid, type, status, prefix=None, limit=None, offset=None):
         params = {'GroupId': gid, 'UserType': type, 'UserStatus': status}
@@ -2043,11 +2043,11 @@ class IAMConnection(AWSQueryConnection):
             params['Limit'] = limit
         if offset:
             params['Offset'] = offset
-        return self.get_rbac_response('GetCloudianUserList', params)
+        return self.get_response('GetCloudianUserList', params)
 
     def get_cloudian_user_credentials(self, akey):
         params = {'AccessKey': akey}
-        return self.get_rbac_response('GetCloudianUserCredentials', params)
+        return self.get_response('GetCloudianUserCredentials', params)
 
     def get_cloudian_user_credentials_list(self, gid=None, uid=None, userid=None, rootonly=None):
         params = {}
@@ -2058,25 +2058,25 @@ class IAMConnection(AWSQueryConnection):
             params = {'GroupId': gid, 'UserId': uid}
         if rootonly:
             params['RootAccountOnly'] = rootonly
-        return self.get_rbac_response('GetCloudianUserCredentialsList', params)
+        return self.get_response('GetCloudianUserCredentialsList', params)
 
     def get_cloudian_user_credentials_list_active(self, gid, uid):
         params = {'GroupId': gid, 'UserId': uid}
-        return self.get_rbac_response('GetCloudianUserCredentialsListActive', params)
+        return self.get_response('GetCloudianUserCredentialsListActive', params)
 
     def get_cloudian_qos_limit(self, gid, uid, region=None):
         params = {'GroupId': gid, 'UserId': uid}
         if region:
             params['Region'] = region
-        return self.get_rbac_response('GetCloudianQosLimits', params)
+        return self.get_response('GetCloudianQosLimits', params)
 
     def get_cloudian_system_license(self):
         params = {}
-        return self.get_rbac_response('GetCloudianSystemLicense', params)
+        return self.get_response('GetCloudianSystemLicense', params)
 
     def get_cloudian_system_version(self):
         params = {}
-        return self.get_rbac_response('GetCloudianSystemVersion', params)
+        return self.get_response('GetCloudianSystemVersion', params)
 
     def get_cloudian_usage(self, op, stime, etime, gra, id=None, userid=None, bucket=None,
                   reversed=None, page=None, offset=None, region=None, regionoffset=None):
@@ -2104,7 +2104,7 @@ class IAMConnection(AWSQueryConnection):
             params['Region'] = region
         if regionoffset:
             params['RegionOffset'] = regionoffset
-        return self.get_rbac_response('GetCloudianUsage', params)
+        return self.get_response('GetCloudianUsage', params)
 
     def get_cloudian_monitor_events(self, nodeid, showack=None, limit=None, region=None):
         params = {'NodeId': nodeid}
@@ -2114,22 +2114,22 @@ class IAMConnection(AWSQueryConnection):
             params['Limit'] = limit
         if region:
             params['Region'] = region
-        return self.get_rbac_response('GetCloudianMonitorEvents', params)
+        return self.get_response('GetCloudianMonitorEvents', params)
 
     def get_cloudian_monitor_nodelist(self, region=None):
         params = {}
         if region:
             params['Region'] = region
-        return self.get_rbac_response('GetCloudianMonitorNodeList', params)
+        return self.get_response('GetCloudianMonitorNodeList', params)
 
     def get_cloudian_monitor_host(self, nodeid, region=None):
         params = {'NodeId': nodeid}
         if region:
             params['Region'] = region
-        return self.get_rbac_response('GetCloudianMonitorHost', params)
+        return self.get_response('GetCloudianMonitorHost', params)
 
     def get_cloudian_monitor_region(self, region=None):
         params = {}
         if region:
             params['Region'] = region
-        return self.get_rbac_response('GetCloudianMonitorRegion', params)
+        return self.get_response('GetCloudianMonitorRegion', params)
