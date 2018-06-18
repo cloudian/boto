@@ -2110,7 +2110,7 @@ class IAMConnection(AWSQueryConnection):
             params['Region'] = region
         if regionoffset is not None:
             params['RegionOffset'] = regionoffset
-        return self.get_rbac_esponse('GetCloudianUsage', params)
+        return self.get_rbac_response('GetCloudianUsage', params)
 
     def get_cloudian_monitor_events(self, nodeid, showack=None, limit=None, region=None):
         params = {'NodeId': nodeid}
