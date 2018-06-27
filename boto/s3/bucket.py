@@ -1618,6 +1618,8 @@ class Bucket(object):
             headers['x-gmt-tieringinfo'] = lifecycle_config.tieringinfo
         if lifecycle_config.compare is not None:
             headers['x-gmt-compare'] = lifecycle_config.compare
+        if lifecycle_config.retain is not None:
+            headers['x-gmt-post-tier-copy'] = lifecycle_config.retain
         response = self.connection.make_request('PUT', self.name,
                                                 data=fp.getvalue(),
                                                 query_args='lifecycle',
@@ -1649,6 +1651,7 @@ class Bucket(object):
             xml.sax.parseString(body, h)
             lifecycle.tieringinfo = response.getheader('x-gmt-tieringinfo')
             lifecycle.compare = response.getheader('x-gmt-compare')
+            lifecycle.retain = response.getheader('x-gmt-post-tier-copy')
             return lifecycle
         else:
             raise self.connection.provider.storage_response_error(
