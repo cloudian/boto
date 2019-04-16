@@ -435,8 +435,12 @@ class S3Connection(AWSAuthConnection):
                                                   self.server_name(port),
                                                   bucket, key) + query_part
 
-    def get_all_buckets(self, headers=None):
-        response = self.make_request('GET', headers=headers)
+    def get_all_buckets(self, headers=None, shared=None):
+        query_args = None
+        if shared is not None:
+            query_args = 'shared'
+        response = self.make_request('GET', headers=headers,
+                                            query_args=query_args)
         body = response.read()
         if response.status > 300:
             raise self.provider.storage_response_error(
