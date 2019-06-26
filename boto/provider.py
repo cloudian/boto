@@ -65,6 +65,12 @@ VERSION_ID_HEADER_KEY = 'version-id-header'
 RESTORE_HEADER_KEY = 'restore-header'
 TAGGING_COUNT_HEADER_KEY = 'tagging-count-header'
 
+BUCKET_OBJECT_LOCK_ENABLED_HEADER_KEY = 'bucket-object-lock-enabled-header'
+OBJECT_LOCK_MODE_HEADER_KEY = 'object-lock-mode-header'
+OBJECT_LOCK_RETAIN_UNTIL_DATE_HEADER_KEY = 'object-lock-retain-until-date-header'
+OBJECT_LOCK_LEGAL_HOLD_HEADER_KEY = 'object-lock-legal-hold-header'
+BYPASS_GOVERNANCE_RETENTION_HEADER_KEY = 'bypass-governance-retention-header'
+
 STORAGE_COPY_ERROR = 'StorageCopyError'
 STORAGE_CREATE_ERROR = 'StorageCreateError'
 STORAGE_DATA_ERROR = 'StorageDataError'
@@ -140,6 +146,11 @@ class Provider(object):
             MFA_HEADER_KEY: AWS_HEADER_PREFIX + 'mfa',
             RESTORE_HEADER_KEY: AWS_HEADER_PREFIX + 'restore',
             TAGGING_COUNT_HEADER_KEY: AWS_HEADER_PREFIX + 'tagging-count',
+            BUCKET_OBJECT_LOCK_ENABLED_HEADER_KEY: AWS_HEADER_PREFIX + 'bucket-object-lock-enabled',
+            OBJECT_LOCK_MODE_HEADER_KEY: AWS_HEADER_PREFIX + 'object-lock-mode',
+            OBJECT_LOCK_RETAIN_UNTIL_DATE_HEADER_KEY: AWS_HEADER_PREFIX + 'object-lock-retain-until-date',
+            OBJECT_LOCK_LEGAL_HOLD_HEADER_KEY: AWS_HEADER_PREFIX + 'object-lock-legal-hold',
+            BYPASS_GOVERNANCE_RETENTION_HEADER_KEY: AWS_HEADER_PREFIX + 'bypass-governance-retention',
         },
         'google': {
             HEADER_PREFIX_KEY: GOOG_HEADER_PREFIX,
@@ -165,6 +176,11 @@ class Provider(object):
             MFA_HEADER_KEY: None,
             RESTORE_HEADER_KEY: None,
             TAGGING_COUNT_HEADER_KEY: None,
+            BUCKET_OBJECT_LOCK_ENABLED_HEADER_KEY: None,
+            OBJECT_LOCK_MODE_HEADER_KEY: None,
+            OBJECT_LOCK_RETAIN_UNTIL_DATE_HEADER_KEY: None,
+            OBJECT_LOCK_LEGAL_HOLD_HEADER_KEY: None,
+            BYPASS_GOVERNANCE_RETENTION_HEADER_KEY: None,
         }
     }
 
@@ -472,6 +488,11 @@ class Provider(object):
         self.mfa_header = header_info_map[MFA_HEADER_KEY]
         self.restore_header = header_info_map[RESTORE_HEADER_KEY]
         self.tagging_count_header = header_info_map[TAGGING_COUNT_HEADER_KEY]
+        self.bucket_object_lock_enabled_header = header_info_map[BUCKET_OBJECT_LOCK_ENABLED_HEADER_KEY]
+        self.object_lock_mode_header = header_info_map[OBJECT_LOCK_MODE_HEADER_KEY]
+        self.object_lock_retain_until_date_header = header_info_map[OBJECT_LOCK_RETAIN_UNTIL_DATE_HEADER_KEY]
+        self.object_lock_legal_hold_header = header_info_map[OBJECT_LOCK_LEGAL_HOLD_HEADER_KEY]
+        self.bypass_governance_retention_header = header_info_map[BYPASS_GOVERNANCE_RETENTION_HEADER_KEY]
 
     def configure_errors(self):
         error_map = self.ErrorMap[self.name]
