@@ -233,6 +233,7 @@ class Bucket(object):
             k.handle_replication_headers(response)
             k.handle_restore_headers(response)
             k.handle_tagging_count_headers(response)
+            k.handle_object_lock_headers(response)
             k.handle_addl_headers(response.getheaders())
             return k, response
         else:
@@ -778,7 +779,8 @@ class Bucket(object):
                                             response_headers=response_headers,
                                             expires_in_absolute=expires_in_absolute)
 
-    def delete_keys(self, keys, quiet=False, mfa_token=None, headers=None):
+    def delete_keys(self, keys, quiet=False, mfa_token=None, headers=None,
+                    bypass_governance_retention=None):
         """
         Deletes a set of keys using S3's Multi-object delete API. If a
         VersionID is specified for that key then that version is removed.
@@ -802,6 +804,10 @@ class Bucket(object):
             required anytime you are deleting versioned objects from a
             bucket that has the MFADelete option on the bucket.
 
+        :type bypass_governance_retention: boolean
+        :param bypass_governance_retention: If ``True`` or ``False``, it will
+            be set to x-amz-bypass-governance-retention header as value
+
         :returns: An instance of MultiDeleteResult
         """
         ikeys = iter(keys)
@@ -809,8 +815,8 @@ class Bucket(object):
         provider = self.connection.provider
         query_args = 'delete'
 
-        def delete_keys2(hdrs):
-            hdrs = hdrs or {}
+        def delete_keys2(headers):
+            headers = headers or {}
             data = u"""<?xml version="1.0" encoding="UTF-8"?>"""
             data += u"<Delete>"
             if quiet:
@@ -851,12 +857,14 @@ class Bucket(object):
             data = data.encode('utf-8')
             fp = BytesIO(data)
             md5 = boto.utils.compute_md5(fp)
-            hdrs['Content-MD5'] = md5[1]
-            hdrs['Content-Type'] = 'text/xml'
+            headers['Content-MD5'] = md5[1]
+            headers['Content-Type'] = 'text/xml'
             if mfa_token:
-                hdrs[provider.mfa_header] = ' '.join(mfa_token)
+                headers[provider.mfa_header] = ' '.join(mfa_token)
+            if bypass_governance_retention is not None:
+                headers[self.connection.provider.bypass_governance_retention_header] = bypass_governance_retention
             response = self.connection.make_request('POST', self.name,
-                                                    headers=hdrs,
+                                                    headers=headers,
                                                     query_args=query_args,
                                                     data=data)
             body = response.read()
@@ -875,7 +883,7 @@ class Bucket(object):
         return result
 
     def delete_key(self, key_name, headers=None, version_id=None,
-                   mfa_token=None):
+                   mfa_token=None, bypass_governance_retention=None):
         """
         Deletes a key from the bucket.  If a version_id is provided,
         only that version of the key will be deleted.
@@ -893,12 +901,21 @@ class Bucket(object):
             required anytime you are deleting versioned objects from a
             bucket that has the MFADelete option on the bucket.
 
+        :type bypass_governance_retention: boolean
+        :param bypass_governance_retention: If ``True`` or ``False``, it will
+            be set to x-amz-bypass-governance-retention header as value
+
         :rtype: :class:`boto.s3.key.Key` or subclass
         :returns: A key object holding information on what was
             deleted.  The Caller can see if a delete_marker was
             created or removed and what version_id the delete created
             or removed.
         """
+        if bypass_governance_retention is not None:
+            if headers:
+                headers[self.connection.provider.bypass_governance_retention_header] = bypass_governance_retention
+            else:
+                headers = {self.connection.provider.bypass_governance_retention_header: bypass_governance_retention}
         # Below check may not be necessary
         #if not key_name:
         #    raise ValueError('Empty key names are not allowed')
@@ -2040,7 +2057,10 @@ class Bucket(object):
     def initiate_multipart_upload(self, key_name, headers=None,
                                   reduced_redundancy=False,
                                   metadata=None, encrypt_key=None,
-                                  policy=None):
+                                  policy=None,
+                                  object_lock_mode=None,
+                                  object_lock_retain_until_date=None,
+                                  object_lock_legal_hold=None):
         """
         Start a multipart upload operation.
 
@@ -2083,6 +2103,19 @@ class Bucket(object):
         :type policy: :class:`boto.s3.acl.CannedACLStrings`
         :param policy: A canned ACL policy that will be applied to the
             new key (once completed) in S3.
+
+        :type object_lock_mode: string
+        :param object_lock_mode: GOVERNANCE|COMPLIANCE. The Object Lock mode
+            that you want to apply to this object.
+
+        :type object_lock_retain_until_date: timestamp
+        :param object_lock_retain_until_date: Format: 2020-01-05T00:00:00.000Z.
+            The date and time when you want this object's Object Lock to expire.
+
+        :type object_lock_legal_hold: string
+        :param object_lock_legal_hold: ON|OFF. The Legal Hold status that you
+            want to apply to the specified object.
+
         """
         query_args = 'uploads'
         provider = self.connection.provider
@@ -2102,6 +2135,12 @@ class Bucket(object):
 
         headers = boto.utils.merge_meta(headers, metadata,
                 self.connection.provider)
+        if object_lock_mode is not None:
+            headers[provider.object_lock_mode_header] = object_lock_mode
+        if object_lock_retain_until_date is not None:
+            headers[provider.object_lock_retain_until_date_header] = object_lock_retain_until_date
+        if object_lock_legal_hold is not None:
+            headers[provider.object_lock_legal_hold_header] = object_lock_legal_hold
         response = self.connection.make_request('POST', self.name, key_name,
                                                 query_args=query_args,
                                                 headers=headers)
@@ -2333,3 +2372,38 @@ class Bucket(object):
         else:
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
+
+    def put_bucket_objectlock_config(self, xml, headers=None):
+        """
+        PUT Bucket object lock configuration for this bucket.
+
+        """
+        fp = StringIO(xml)
+        md5 = boto.utils.compute_md5(fp)
+        if headers is None:
+            headers = {}
+        headers['Content-MD5'] = md5[1]
+        response = self.connection.make_request('PUT', self.name, data=xml,
+                                                query_args='object-lock',
+                                                headers=headers)
+        body = response.read()
+        if response.status == 200:
+            return body
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def get_bucket_objectlock_config(self, headers=None):
+        """
+        GET Bucket object lock configuration for this bucket.
+
+        """
+        response = self.connection.make_request('GET', self.name,
+                query_args='object-lock', headers=headers)
+        body = response.read()
+        if response.status == 200:
+            return body
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+

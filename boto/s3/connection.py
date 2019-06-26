@@ -584,7 +584,7 @@ class S3Connection(AWSAuthConnection):
         return bucket
 
     def create_bucket(self, bucket_name, headers=None,
-                      location=Location.DEFAULT, policy=None):
+                      location=Location.DEFAULT, policy=None, objectlockenabled=None):
         """
         Creates a new located bucket. By default it's in the USA. You can pass
         Location.EU to create a European bucket (S3) or European Union bucket
@@ -605,6 +605,10 @@ class S3Connection(AWSAuthConnection):
         :param policy: A canned ACL policy that will be applied to the
             new key in S3.
 
+        :type objectlockenabled: boolean
+        :param objectlockenabled: If ``True`` or ``False``, it will be set to
+                                  x-amz-bucket-object-lock-enabled header as value
+
         """
         check_lowercase_bucketname(bucket_name)
 
@@ -613,6 +617,11 @@ class S3Connection(AWSAuthConnection):
                 headers[self.provider.acl_header] = policy
             else:
                 headers = {self.provider.acl_header: policy}
+        if objectlockenabled is not None:
+            if headers:
+                headers[self.provider.bucket_object_lock_enabled_header] = objectlockenabled
+            else:
+                headers = {self.provider.bucket_object_lock_enabled_header: objectlockenabled}
         if location == Location.DEFAULT:
             data = ''
         else:

@@ -1203,7 +1203,7 @@ def sigv4_streaming():
     Returns:
         One of 0,1,2,3
     """
-    default = 1
+    default = 0
 
     streaming = os.environ.get('S3_SIGV4_STREAMING')
     if streaming is not None:
