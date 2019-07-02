@@ -91,6 +91,16 @@ class Key(object):
         <Days>%s</Days>
       </RestoreRequest>"""
 
+    RetentionBody = """<?xml version="1.0" encoding="UTF-8"?>
+      <Retention xmlns="http://s3.amazonaws.com/doc/2006-03-01">
+        <Mode>%s</Mode>
+        <RetainUntilDate>%s</RetainUntilDate>
+      </Retention>"""
+
+    LegalHoldBody = """<?xml version="1.0" encoding="UTF-8"?>
+      <LegalHold xmlns="http://s3.amazonaws.com/doc/2006-03-01">
+        <Status>%s</Status>
+      </LegalHold>"""
 
     BufferSize = boto.config.getint('Boto', 'key_buffer_size', 8192)
     # AWS has a minimum aws-chunk size of 8K when using SigV4.
@@ -148,6 +158,9 @@ class Key(object):
         self.ongoing_restore = None
         self.expiry_date = None
         self.local_hashes = {}
+        self.object_lock_mode = None
+        self.object_lock_retain_until_date = None
+        self.object_lock_legal_hold = None
 
     def __repr__(self):
         if self.bucket:
@@ -244,6 +257,24 @@ class Key(object):
                 provider.tagging_count_header, None)
         else:
             self.tagging_count = None
+
+    def handle_object_lock_headers(self, resp):
+        provider = self.bucket.connection.provider
+        if provider.object_lock_mode_header:
+            self.object_lock_mode = resp.getheader(
+                provider.object_lock_mode_header, None)
+        else:
+            self.object_lock_mode = None
+        if provider.object_lock_retain_until_date_header:
+            self.object_lock_retain_until_date = resp.getheader(
+                provider.object_lock_retain_until_date_header, None)
+        else:
+            self.object_lock_retain_until_date = None
+        if provider.object_lock_legal_hold_header:
+            self.object_lock_legal_hold = resp.getheader(
+                provider.object_lock_legal_hold_header, None)
+        else:
+            self.object_lock_legal_hold = None
 
     def handle_encryption_headers(self, resp):
         provider = self.bucket.connection.provider
@@ -354,6 +385,7 @@ class Key(object):
             self.handle_replication_headers(self.resp)
             self.handle_restore_headers(self.resp)
             self.handle_tagging_count_headers(self.resp)
+            self.handle_object_lock_headers(self.resp)
             self.handle_addl_headers(self.resp.getheaders())
 
     def open_write(self, headers=None, override_num_retries=None):
@@ -574,12 +606,13 @@ class Key(object):
         """
         return bool(self.bucket.lookup(self.name, headers=headers))
 
-    def delete(self, headers=None):
+    def delete(self, headers=None, bypass_governance_retention=None):
         """
         Delete this key from S3
         """
         return self.bucket.delete_key(self.name, version_id=self.version_id,
-                                      headers=headers)
+                                      headers=headers,
+                                      bypass_governance_retention=bypass_governance_retention)
 
     def get_metadata(self, name):
         return self.metadata.get(name)
@@ -1551,7 +1584,10 @@ class Key(object):
     def set_contents_from_file(self, fp, headers=None, replace=True,
                                cb=None, num_cb=10, policy=None, md5=None,
                                reduced_redundancy=False, query_args=None,
-                               encrypt_key=None, size=None, rewind=False):
+                               encrypt_key=None, size=None, rewind=False,
+                               object_lock_mode=None,
+                               object_lock_retain_until_date=None,
+                               object_lock_legal_hold=None):
         """
         Store an object in S3 using the name of the Key object as the
         key in S3 and the contents of the file pointed to by 'fp' as the
@@ -1625,6 +1661,18 @@ class Key(object):
             it. The default behaviour is False which reads from the
             current position of the file pointer (fp).
 
+        :type object_lock_mode: string
+        :param object_lock_mode: GOVERNANCE|COMPLIANCE. The Object Lock mode
+            that you want to apply to this object.
+
+        :type object_lock_retain_until_date: timestamp
+        :param object_lock_retain_until_date: Format: 2020-01-05T00:00:00.000Z.
+            The date and time when you want this object's Object Lock to expire.
+
+        :type object_lock_legal_hold: string
+        :param object_lock_legal_hold: ON|OFF. The Legal Hold status that you
+            want to apply to the specified object.
+
         :rtype: int
         :return: The number of bytes written to the key.
         """
@@ -1634,7 +1682,12 @@ class Key(object):
             headers[provider.acl_header] = policy
         if encrypt_key is not None:
             headers[provider.server_side_encryption_header] = encrypt_key
-
+        if object_lock_mode is not None:
+            headers[provider.object_lock_mode_header] = object_lock_mode
+        if object_lock_retain_until_date is not None:
+            headers[provider.object_lock_retain_until_date_header] = object_lock_retain_until_date
+        if object_lock_legal_hold is not None:
+            headers[provider.object_lock_legal_hold_header] = object_lock_legal_hold
         if rewind:
             # caller requests reading from beginning of fp.
             fp.seek(0, os.SEEK_SET)
@@ -1696,8 +1749,15 @@ class Key(object):
                     if (re.match('^"[a-fA-F0-9]{32}"$', key.etag)):
                         etag = key.etag.strip('"')
                         md5 = (etag, base64.b64encode(binascii.unhexlify(etag)))
-                if (not md5 and 'hmac-v4-s3'
-                    not in self.bucket.connection._required_auth_capability()):
+                streaming = True
+                if 'hmac-v4-s3' in self.bucket.connection._required_auth_capability():
+                    if sigv4_streaming() in [0,3]:
+                        # No streaming
+                        streaming = False
+                else:
+                    # SigV2 - No streaming
+                    streaming = False
+                if not md5 and not streaming:
                     # compute_md5() and also set self.size to actual
                     # size of the bytes read computing the md5.
                     md5 = self.compute_md5(fp, size)
@@ -2534,3 +2594,71 @@ class Key(object):
             raise self.bucket.connection.provider.storage_response_error(
                 response.status, response.reason, body)
 
+    def set_retention(self, object_lock_mode, object_lock_retain_until_date,
+                      version_id=None, headers=None):
+        data = self.RetentionBody % (object_lock_mode, object_lock_retain_until_date)
+        md5 = compute_md5(BytesIO(data))
+        headers = headers or {}
+        headers['Content-MD5'] = md5[1]
+        qargs = 'retention'
+        if version_id is not None:
+            qargs += '&versionId=' + version_id
+        response = self.bucket.connection.make_request(
+            'PUT', self.bucket.name, self.name,
+            data=data,
+            headers=headers, query_args=qargs)
+        if response.status != 200:
+            provider = self.bucket.connection.provider
+            raise provider.storage_response_error(response.status,
+                                                  response.reason,
+                                                  response.read())
+
+    def get_retention(self, version_id=None, headers=None):
+        qargs = 'retention'
+        if version_id is not None:
+            qargs += '&versionId=' + version_id
+        response = self.bucket.connection.make_request(
+            'GET', self.bucket.name, self.name,
+            headers=headers, query_args=qargs)
+        body = response.read()
+        if response.status == 200:
+            return body
+        else:
+            provider = self.bucket.connection.provider
+            raise provider.storage_response_error(response.status,
+                                                  response.reason,
+                                                  response.read())
+
+    def set_legal_hold(self, object_lock_legal_hold, version_id=None, headers=None):
+        data = self.LegalHoldBody % object_lock_legal_hold
+        md5 = compute_md5(BytesIO(data))
+        headers = headers or {}
+        headers['Content-MD5'] = md5[1]
+        qargs = 'legal-hold'
+        if version_id is not None:
+            qargs += '&versionId=' + version_id
+        response = self.bucket.connection.make_request(
+            'PUT', self.bucket.name, self.name,
+            data=data,
+            headers=headers, query_args=qargs)
+        if response.status != 200:
+            provider = self.bucket.connection.provider
+            raise provider.storage_response_error(response.status,
+                                                  response.reason,
+                                                  response.read())
+
+    def get_legal_hold(self, version_id=None, headers=None):
+        qargs = 'legal-hold'
+        if version_id is not None:
+            qargs += '&versionId=' + version_id
+        response = self.bucket.connection.make_request(
+            'GET', self.bucket.name, self.name,
+            headers=headers, query_args=qargs)
+        body = response.read()
+        if response.status == 200:
+            return body
+        else:
+            provider = self.bucket.connection.provider
+            raise provider.storage_response_error(response.status,
+                                                  response.reason,
+                                                  response.read())
