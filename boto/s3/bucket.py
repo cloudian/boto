@@ -40,6 +40,7 @@ from boto.s3.bucketlistresultset import MultiPartUploadListResultSet
 from boto.s3.lifecycle import Lifecycle
 from boto.s3.crr import CRR
 from boto.s3.tagging import Tags
+from boto.s3.olconfig import OLConfiguration
 from boto.s3.cors import CORSConfiguration
 from boto.s3.bucketlogging import BucketLogging
 from boto.s3 import website
@@ -2373,16 +2374,17 @@ class Bucket(object):
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
 
-    def put_bucket_objectlock_config(self, xml, headers=None):
+    def put_xml_bucket_objectlock_config(self, xml, headers=None):
         """
         PUT Bucket object lock configuration for this bucket.
 
         """
-        fp = StringIO(xml)
-        md5 = boto.utils.compute_md5(fp)
         if headers is None:
             headers = {}
+        md5 = boto.utils.compute_md5(StringIO(xml))
         headers['Content-MD5'] = md5[1]
+        if not isinstance(xml, bytes):
+            xml = xml.encode('utf-8')
         response = self.connection.make_request('PUT', self.name, data=xml,
                                                 query_args='object-lock',
                                                 headers=headers)
@@ -2393,7 +2395,10 @@ class Bucket(object):
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
 
-    def get_bucket_objectlock_config(self, headers=None):
+    def put_bucket_objectlock_config(self, olc, headers=None):
+        return self.put_xml_bucket_objectlock_config(olc.to_xml(), headers=headers)
+
+    def get_xml_bucket_objectlock_config(self, headers=None):
         """
         GET Bucket object lock configuration for this bucket.
 
@@ -2407,3 +2412,11 @@ class Bucket(object):
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
 
+    def get_bucket_objectlock_config(self, headers=None):
+        response = self.get_xml_bucket_objectlock_config()
+        olc = OLConfiguration()
+        h = handler.XmlHandler(olc, self)
+        if not isinstance(response, bytes):
+            response = response.encode('utf-8')
+        xml.sax.parseString(response, h)
+        return olc

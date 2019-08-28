@@ -67,7 +67,7 @@ class OLConfiguration(object):
         s = '<?xml version="1.0" encoding="UTF-8"?>'
         s += '<ObjectLockConfiguration xmlns="http://s3.cloudian.com/doc/2013-10-01/">'
         if self.enabled:
-            s += '<ObjectLockEnabled>' + self.enabled + '</ObjectLockEnabled>'
+            s += '<ObjectLockEnabled>' + str(self.enabled) + '</ObjectLockEnabled>'
         if self.mode:
             s += '<Rule>'
             s += '<DefaultRetention>'
