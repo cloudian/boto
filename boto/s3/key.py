@@ -97,6 +97,10 @@ class Key(object):
         <RetainUntilDate>%s</RetainUntilDate>
       </Retention>"""
 
+    RetentionEmptyBody = """<?xml version="1.0" encoding="UTF-8"?>
+      <Retention xmlns="http://s3.amazonaws.com/doc/2006-03-01">
+      </Retention>"""
+
     LegalHoldBody = """<?xml version="1.0" encoding="UTF-8"?>
       <LegalHold xmlns="http://s3.amazonaws.com/doc/2006-03-01">
         <Status>%s</Status>
@@ -2595,11 +2599,17 @@ class Key(object):
                 response.status, response.reason, body)
 
     def set_retention(self, object_lock_mode, object_lock_retain_until_date,
-                      version_id=None, headers=None):
-        data = self.RetentionBody % (object_lock_mode, object_lock_retain_until_date)
+                      version_id=None, headers=None,
+                      bypass_governance_retention=None):
+        if object_lock_mode is None and object_lock_retain_until_date is None:
+            data = self.RetentionEmptyBody
+        else:
+            data = self.RetentionBody % (object_lock_mode, object_lock_retain_until_date)
         md5 = compute_md5(BytesIO(data))
         headers = headers or {}
         headers['Content-MD5'] = md5[1]
+        if bypass_governance_retention is not None:
+            headers[self.bucket.connection.provider.bypass_governance_retention_header] = bypass_governance_retention
         qargs = 'retention'
         if version_id is not None:
             qargs += '&versionId=' + version_id
