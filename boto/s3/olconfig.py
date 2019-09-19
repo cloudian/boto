@@ -44,6 +44,12 @@ class OLConfiguration(object):
         self.days = days
         self.years = years
 
+    def __repr__(self):
+        return '<ObjectLockConfiguration: %s, %s, %s, %s>' % (self.enabled,
+                                                              self.mode,
+                                                              self.days,
+                                                              self.years)
+
     def startElement(self, name, attrs, connection):
         return None
 
