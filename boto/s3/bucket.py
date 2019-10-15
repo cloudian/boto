@@ -955,6 +955,9 @@ class Bucket(object):
                  src_key_name, metadata=None, src_version_id=None,
                  storage_class='STANDARD', preserve_acl=False,
                  encrypt_key=None, headers=None, query_args=None,
+                 object_lock_mode=None,
+                 object_lock_retain_until_date=None,
+                 object_lock_legal_hold=None,
                  policy=None):
         """
         Create a new key in the bucket by copying another existing key.
@@ -1007,6 +1010,18 @@ class Bucket(object):
         :param query_args: A string of additional querystring arguments
             to append to the request
 
+        :type object_lock_mode: string
+        :param object_lock_mode: GOVERNANCE|COMPLIANCE. The Object Lock mode
+            that you want to apply to this object.
+
+        :type object_lock_retain_until_date: timestamp
+        :param object_lock_retain_until_date: Format: 2020-01-05T00:00:00.000Z.
+            The date and time when you want this object's Object Lock to expire.
+
+        :type object_lock_legal_hold: string
+        :param object_lock_legal_hold: ON|OFF. The Legal Hold status that you
+            want to apply to the specified object.
+
         :type policy: :class:`boto.s3.acl.CannedACLStrings`
         :param policy: A canned ACL policy that will be applied instead
                        of the default to the new key (once completed) in S3.
@@ -1041,6 +1056,12 @@ class Bucket(object):
             headers = boto.utils.merge_meta(headers, metadata, provider)
         elif not query_args:  # Can't use this header with multi-part copy.
             headers[provider.metadata_directive_header] = 'COPY'
+        if object_lock_mode is not None:
+            headers[provider.object_lock_mode_header] = object_lock_mode
+        if object_lock_retain_until_date is not None:
+            headers[provider.object_lock_retain_until_date_header] = object_lock_retain_until_date
+        if object_lock_legal_hold is not None:
+            headers[provider.object_lock_legal_hold_header] = object_lock_legal_hold
         response = self.connection.make_request('PUT', self.name, new_key_name,
                                                 headers=headers,
                                                 query_args=query_args)
