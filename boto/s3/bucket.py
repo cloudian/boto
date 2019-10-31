@@ -1183,6 +1183,10 @@ class Bucket(object):
         if not subresource:
             raise TypeError('set_subresource called with subresource=None')
         query_args = subresource
+        if headers is None:
+            headers = {}
+        md5 = boto.utils.compute_md5(StringIO(value))
+        headers['Content-MD5'] = md5[1]
         if version_id:
             query_args += '&versionId=%s' % version_id
         if not isinstance(value, bytes):
