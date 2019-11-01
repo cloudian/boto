@@ -224,6 +224,9 @@ class MultiPartUpload(object):
             h = handler.XmlHandler(self, self)
             xml.sax.parseString(body, h)
             return self._parts
+        else:
+            raise self.bucket.connection.provider.storage_response_error(
+                response.status, response.reason, body)
 
     def upload_part_from_file(self, fp, part_num, headers=None, replace=True,
                               cb=None, num_cb=10, md5=None, size=None,
