@@ -153,7 +153,7 @@ class Bucket(object):
         return self.get_key(key_name, headers=headers)
 
     def get_key(self, key_name, headers=None, version_id=None,
-                response_headers=None, validate=True):
+                partnum=None, response_headers=None, validate=True):
         """
         Check to see if a particular key exists within the bucket.  This
         method uses a HEAD request to check for the existence of the key.
@@ -167,6 +167,9 @@ class Bucket(object):
 
         :param version_id:
         :type version_id: string
+
+        :param partnum:
+        :type partnum: string
 
         :param response_headers: A dictionary containing HTTP
             headers/values that will override any headers associated
@@ -196,6 +199,8 @@ class Bucket(object):
         query_args_l = []
         if version_id:
             query_args_l.append('versionId=%s' % version_id)
+        if partnum:
+            query_args_l.append('partNumber=%s' % partnum)
         if response_headers:
             for rk, rv in six.iteritems(response_headers):
                 query_args_l.append('%s=%s' % (rk, urllib.parse.quote(rv)))
