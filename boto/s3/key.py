@@ -2019,8 +2019,8 @@ class Key(object):
         return r
 
     def get_file(self, fp, headers=None, cb=None, num_cb=10,
-                 torrent=False, version_id=None, override_num_retries=None,
-                 response_headers=None):
+                 torrent=False, version_id=None, partnum=None,
+                 override_num_retries=None, response_headers=None):
         """
         Retrieves a file from an S3 Key
 
@@ -2064,16 +2064,24 @@ class Key(object):
             retrieving the object.  You can set the Key object's
             ``version_id`` attribute to None to always grab the latest
             version from a version-enabled bucket.
+
+        :type partnum: str
+        :param partnum: Part number of the object part being read.
+            This is a positive integer between 1 and the maximum number
+            of parts supported. Only objects uploaded using the multipart
+            upload API have part numbers.
         """
         self._get_file_internal(fp, headers=headers, cb=cb, num_cb=num_cb,
                                 torrent=torrent, version_id=version_id,
+                                partnum=partnum,
                                 override_num_retries=override_num_retries,
                                 response_headers=response_headers,
                                 hash_algs=None,
                                 query_args=None)
 
     def _get_file_internal(self, fp, headers=None, cb=None, num_cb=10,
-                 torrent=False, version_id=None, override_num_retries=None,
+                 torrent=False, version_id=None,
+                 partnum=None, override_num_retries=None,
                  response_headers=None, hash_algs=None, query_args=None):
         if headers is None:
             headers = {}
@@ -2096,6 +2104,8 @@ class Key(object):
             version_id = self.version_id
         if version_id:
             query_args.append('versionId=%s' % version_id)
+        if partnum:
+            query_args.append('partNumber=%s' % partnum)
         if response_headers:
             for key in response_headers:
                 query_args.append('%s=%s' % (
@@ -2180,6 +2190,7 @@ class Key(object):
                              cb=None, num_cb=10,
                              torrent=False,
                              version_id=None,
+                             partnum=None,
                              res_download_handler=None,
                              response_headers=None):
         """
@@ -2229,6 +2240,12 @@ class Key(object):
             retrieving the object.  You can set the Key object's
             ``version_id`` attribute to None to always grab the latest
             version from a version-enabled bucket.
+
+        :type partnum: str
+        :param partnum: Part number of the object part being read.
+            This is a positive integer between 1 and the maximum number
+            of parts supported. Only objects uploaded using the multipart
+            upload API have part numbers.
         """
         if self.bucket is not None:
             if res_download_handler:
@@ -2237,13 +2254,14 @@ class Key(object):
                                               version_id=version_id)
             else:
                 self.get_file(fp, headers, cb, num_cb, torrent=torrent,
-                              version_id=version_id,
+                              version_id=version_id, partnum=partnum,
                               response_headers=response_headers)
 
     def get_contents_to_filename(self, filename, headers=None,
                                  cb=None, num_cb=10,
                                  torrent=False,
                                  version_id=None,
+                                 partnum=None,
                                  res_download_handler=None,
                                  response_headers=None):
         """
@@ -2293,12 +2311,18 @@ class Key(object):
             retrieving the object.  You can set the Key object's
             ``version_id`` attribute to None to always grab the latest
             version from a version-enabled bucket.
+
+        :type partnum: str
+        :param partnum: Part number of the object part being read.
+            This is a positive integer between 1 and the maximum number
+            of parts supported. Only objects uploaded using the multipart
+            upload API have part numbers.
         """
         try:
             with open(filename, 'wb') as fp:
                 self.get_contents_to_file(fp, headers, cb, num_cb,
                                           torrent=torrent,
-                                          version_id=version_id,
+                                          version_id=version_id, partnum=partnum,
                                           res_download_handler=res_download_handler,
                                           response_headers=response_headers)
         except Exception:
@@ -2317,6 +2341,7 @@ class Key(object):
                                cb=None, num_cb=10,
                                torrent=False,
                                version_id=None,
+                               partnum=None,
                                response_headers=None, encoding=None):
         """
         Retrieve an object from S3 using the name of the Key object as the
@@ -2359,6 +2384,12 @@ class Key(object):
             ``version_id`` attribute to None to always grab the latest
             version from a version-enabled bucket.
 
+        :type partnum: str
+        :param partnum: Part number of the object part being read.
+            This is a positive integer between 1 and the maximum number
+            of parts supported. Only objects uploaded using the multipart
+            upload API have part numbers.
+
         :type encoding: str
         :param encoding: The text encoding to use, such as ``utf-8``
             or ``iso-8859-1``. If set, then a string will be returned.
@@ -2369,7 +2400,7 @@ class Key(object):
         """
         fp = BytesIO()
         self.get_contents_to_file(fp, headers, cb, num_cb, torrent=torrent,
-                                  version_id=version_id,
+                                  version_id=version_id, partnum=partnum,
                                   response_headers=response_headers)
         value = fp.getvalue()
 
