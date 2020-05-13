@@ -176,7 +176,6 @@ class FederationToken(object):
         else:
             pass
 
-
 class AssumedRole(object):
     """
     :ivar user: The assumed role user.
@@ -235,3 +234,33 @@ class DecodeAuthorizationMessage(object):
             self.request_id = value
         elif name == 'DecodedMessage':
             self.decoded_message = value
+
+class Identity(object):
+    """
+    :ivar arn: The AWS ARN associated with the calling entity.
+    :ivar user_id: The unique identifier of the calling entity.
+    :ivar account: The AWS account ID number of the account that owns or
+                   contains the calling entity.
+    """
+    def __init__(self, parent=None):
+        self.parent = parent
+        self.arn = None
+        self.user_id = None
+        self.account = None
+        self.request_id = None
+
+    def startElement(self, name, attrs, connection):
+        pass
+
+    def endElement(self, name, value, connection):
+        if name == 'Arn':
+            self.arn = value
+        elif name == 'UserId':
+            self.user_id = value
+        elif name == 'Account':
+            self.account = int(value)
+        elif name == 'RequestId':
+            self.request_id = value
+        else:
+            pass
+

@@ -24,7 +24,7 @@
 from boto.connection import AWSQueryConnection
 from boto.provider import Provider, NO_CREDENTIALS_PROVIDED
 from boto.regioninfo import RegionInfo
-from boto.sts.credentials import Credentials, FederationToken, AssumedRole
+from boto.sts.credentials import Credentials, FederationToken, AssumedRole, Identity
 from boto.sts.credentials import DecodeAuthorizationMessage
 import boto
 import boto.utils
@@ -255,10 +255,20 @@ class STSConnection(AWSQueryConnection):
         return self.get_object('GetFederationToken', params,
                                 FederationToken, verb='POST')
 
+    def get_caller_identity(self):
+        """
+        Returns an Identity object with details about the IAM user or role
+        whose credentials are used to call the operation. This operaton does
+        not have any parameters.
+        """
+        return self.get_object('GetCallerIdentity', {}, Identity)
+
     def assume_role(self, role_arn, role_session_name, policy=None,
                     duration_seconds=None, external_id=None,
                     mfa_serial_number=None,
-                    mfa_token=None):
+                    mfa_token=None,
+                    policy_arns=[],
+                    tags={}, transitive_tag_keys=[]):
         """
         Returns a set of temporary security credentials (consisting of
         an access key ID, a secret access key, and a security token)
@@ -366,6 +376,36 @@ class STSConnection(AWSQueryConnection):
             expired, the AssumeRole call returns an "access denied" errror.
             Minimum length of 6. Maximum length of 6.
 
+        :type policy_arns: list of strings
+        :param policy_arns: The Amazon Resource Names (ARNs) of the IAM managed
+            policies that you want to use as managed session policies. The
+            policies must exist in the same account as the role. This parameter
+            is optional. You can provide up to 10 managed policy ARNs. However,
+            the plain text that you use for both inline and managed session
+            policies can't exceed 2,048 characters. For more information about
+            ARNs, see Amazon Resource Names (ARNs) and AWS Service Namespaces
+            in the AWS General Reference.
+
+        :type tags: dictionary of key/values
+        :param tags: A dictionary of session tags that you want to pass. Each
+            session tag consists of a key name and an associated value. For
+            more information about session tags, see Tagging AWS STS Sessions
+            in the IAM User Guide.  This parameter is optional. You can pass up
+            to 50 session tags. The plain text session tag keys can't exceed
+            128 characters, and the values can't exceed 256 characters. For
+            these and additional limits, see IAM and STS Character Limits in
+            the IAM User Guide.
+
+        :type transitive_tag_keys: list of strings
+        :param transitive_tag_keys: A list of keys for session tags that you
+             want to set as transitive. If you set a tag key as transitive, the
+             corresponding key and value passes to subsequent sessions in a
+             role chain. For more information, see Chaining Roles with Session
+             Tags in the IAM User Guide. This parameter is optional. When you
+             set session tags as transitive, the session policy and session
+             tags packed binary limit is not affected.  If you choose not to
+             specify a transitive tag key, then no tags are passed from this
+             session to any subsequent sessions.
         """
         params = {
             'RoleArn': role_arn,
@@ -381,6 +421,22 @@ class STSConnection(AWSQueryConnection):
             params['SerialNumber'] = mfa_serial_number
         if mfa_token is not None:
             params['TokenCode'] = mfa_token
+        if policy_arns:
+            idx = 1
+            for parn in policy_arns:
+                params['PolicyArns.member.%d.arn' % idx] = parn
+                idx += 1
+        if tags:
+            idx = 1
+            for k, v in tags.items():
+                params['Tags.member.%d.Key' % idx] = k
+                params['Tags.member.%d.Value' % idx] = v
+                idx += 1
+        if transitive_tag_keys:
+            idx = 1
+            for ttk in transitive_tag_keys:
+                params['TransitiveTagKey.member.%d' % idx] = ttk
+                idx += 1
         return self.get_object('AssumeRole', params, AssumedRole, verb='POST')
 
     def assume_role_with_saml(self, role_arn, principal_arn, saml_assertion,
