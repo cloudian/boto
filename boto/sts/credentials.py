@@ -258,7 +258,7 @@ class Identity(object):
         elif name == 'UserId':
             self.user_id = value
         elif name == 'Account':
-            self.account = int(value)
+            self.account = value
         elif name == 'RequestId':
             self.request_id = value
         else:
