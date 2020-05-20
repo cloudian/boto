@@ -900,15 +900,16 @@ class S3HmacAuthV4Handler(HmacAuthV4Handler, AuthHandler):
                                  urllib.parse.urlencode(req.params))
 
 
-class STSAnonHandler(AuthHandler):
+class QueryAnonHandler(AuthHandler):
     """
     Provides pure query construction (no actual signing).
 
-    Used for making anonymous STS request for operations like
-    ``assume_role_with_web_identity``.
+    Used for making anonymous STS requests for operations like
+    ``assume_role_with_web_identity`` and anonymous IAM requests
+    for testing.
     """
 
-    capability = ['sts-anon']
+    capability = ['query-anon']
 
     def _escape_value(self, value):
         # This is changed from a previous version because this string is
