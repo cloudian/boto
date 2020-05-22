@@ -932,11 +932,18 @@ class QueryAnonHandler(AuthHandler):
         qs = self._build_query_string(
             http_request.params
         )
-        boto.log.debug('query_string in body: %s' % qs)
-        headers['Content-Type'] = 'application/x-www-form-urlencoded'
-        # This will be  a POST so the query string should go into the body
-        # as opposed to being in the uri
-        http_request.body = qs
+        if http_request.method == 'POST':
+            boto.log.debug('query_string in body: %s' % qs)
+            headers['Content-Type'] = 'application/x-www-form-urlencoded'
+            # This is a POST so the query string should go into the body
+            # as opposed to being in the uri
+            http_request.body = qs
+        else:
+            # This is a GET so the query string should go into the URI
+            http_request.body = ''
+            http_request.path = http_request.path.split('?')[0]
+            http_request.path = http_request.path + '?' + qs
+            boto.log.debug('URI with query_string: %s' % http_request.path)
 
 
 class QuerySignatureHelper(HmacKeys):
