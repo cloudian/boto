@@ -197,6 +197,59 @@ class AssumedRole(object):
     def endElement(self, name, value, connection):
         pass
 
+class AssumedRoleWithSAML(AssumedRole):
+    """
+    :ivar user: The assumed role user.
+    :ivar credentials: A Credentials object containing the credentials.
+    :ivar audience: The value of the Recipient attribute of the
+          SubjectConfirmationData element of the SAML assertion.
+    :ivar issuer: The value of the Issuer element of the SAML assertion.
+    :ivar name_qualifier: A hash value based on the concatenation of the
+          Issuer response value, the AWS account ID, and the friendly name
+          (the last part of the ARN) of the SAML provider in IAM. The
+          combination of NameQualifier and Subject can be used to uniquely
+          identify a federated user.
+          The following pseudocode shows how the hash value is calculated:
+            BASE64(SHA1("issuer" + "123456789012" + "/MySAMLIdP"))
+    :ivar packed_policy_size: A percentage value that indicates the packed
+          size of the session policies and session tags combined passed in the
+          request. The request fails if the packed size is greater than 100
+          percent, which means the policies and tags exceeded the allowed
+          space. Integer.
+    :ivar subject: The value of the NameID element in the Subject element of
+          the SAML assertion.
+    :ivar subject_type: The format of the name ID, as defined by the Format
+          attribute in the NameID element of the SAML assertion. Typical
+          examples of the format are transient or persistent. If the format
+          includes the prefix urn:oasis:names:tc:SAML:2.0:nameid-format, that
+          prefix is removed. For example,
+          urn:oasis:names:tc:SAML:2.0:nameid-format:transient is returned as
+          transient. If the format includes any other prefix, the format is
+          returned with no modifications.
+    """
+    def __init__(self, connection=None, credentials=None, user=None):
+        super(AssumedRoleWithSAML, self).__init__(connection, credentials, user)
+        self.audience = None
+        self.issuer = None
+        self.name_qualifier = None
+        self.packed_policy_size = None
+        self.subject = None
+        self.subject_type = None
+
+    def endElement(self, name, value, connection):
+        super(AssumedRoleWithSAML, self).endElement(name, value, connection)
+        if name == 'Audience':
+            self.audience = value
+        elif name == 'Issuer':
+            self.issuer = value
+        elif name == 'NameQualifier':
+            self.name_qualifier = value
+        elif name == 'PackedPolicySize':
+            self.packed_policy_size = int(value)
+        elif name == 'Subject':
+            self.subject = value
+        elif name == 'SubjectType':
+            self.subject_type = value
 
 class User(object):
     """
