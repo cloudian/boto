@@ -24,7 +24,8 @@
 from boto.connection import AWSQueryConnection
 from boto.provider import Provider, NO_CREDENTIALS_PROVIDED
 from boto.regioninfo import RegionInfo
-from boto.sts.credentials import Credentials, FederationToken, AssumedRole, Identity
+from boto.sts.credentials import Credentials, FederationToken, AssumedRole
+from boto.sts.credentials import AssumedRoleWithSAML, Identity
 from boto.sts.credentials import DecodeAuthorizationMessage
 import boto
 import boto.utils
@@ -545,7 +546,7 @@ class STSConnection(AWSQueryConnection):
             params['Policy'] = policy
         if duration_seconds is not None:
             params['DurationSeconds'] = duration_seconds
-        return self.get_object('AssumeRoleWithSAML', params, AssumedRole,
+        return self.get_object('AssumeRoleWithSAML', params, AssumedRoleWithSAML,
                                verb='POST')
 
     def assume_role_with_web_identity(self, role_arn, role_session_name,
