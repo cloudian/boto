@@ -941,6 +941,8 @@ class QueryAnonHandler(AuthHandler):
         else:
             # This is a GET so the query string should go into the URI
             http_request.body = ''
+            # If this is a retried req, the qs from the previous try will
+            # already be there. We need to get rid of that and rebuild it.
             http_request.path = http_request.path.split('?')[0]
             http_request.path = http_request.path + '?' + qs
             boto.log.debug('URI with query_string: %s' % http_request.path)
