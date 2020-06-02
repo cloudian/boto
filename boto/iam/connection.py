@@ -1158,7 +1158,8 @@ class IAMConnection(AWSQueryConnection):
         # Dump the policy (either user-supplied ``dict`` or one of the defaults)
         return json.dumps(assume_role_policy_document)
 
-    def create_role(self, role_name, assume_role_policy_document=None, path=None):
+    def create_role(self, role_name, assume_role_policy_document=None, path=None,
+                    description=None, max_session_duration=None, tags=None):
         """
         Creates a new role for your AWS account.
 
@@ -1175,6 +1176,33 @@ class IAMConnection(AWSQueryConnection):
 
         :type path: string
         :param path: The path to the role.
+
+        :type description: string
+        :param description: A description of the role
+
+        :type max_session_duration: int or string
+        :param max_session_duration: The maximum session duration (in seconds)
+               that you want to set for the specified role. If you do not
+               specify a value for this setting, the default maximum of one
+               hour is applied. This setting can have a value from 1 hour to
+               12 hours.
+               Anyone who assumes the role from the AWS CLI or API can use the
+               DurationSeconds API parameter or the duration-seconds CLI
+               parameter to request a longer session. The MaxSessionDuration
+               setting determines the maximum duration that can be requested
+               using the DurationSeconds parameter. If users don't specify a
+               value for the DurationSeconds parameter, their security
+               credentials are valid for one hour by default. This applies
+               when you use the AssumeRole* API operations or the assume-role*
+               CLI operations but does not apply when you use those operations
+               to create a console URL. For more information, see Using IAM
+               Roles in the IAM User Guide.
+
+        :type tags: dict of key values
+        :param tags: A dictionary of tags that you want to attach to the newly
+               created role. Each tag consists of a key name and an associated
+               value. For more information about tagging, see Tagging IAM
+               Identities in the IAM User Guide.
         """
         params = {
             'RoleName': role_name,
@@ -1184,7 +1212,17 @@ class IAMConnection(AWSQueryConnection):
         }
         if path is not None:
             params['Path'] = path
-        return self.get_response('CreateRole', params)
+        if description is not None:
+            params['Description'] = description
+        if max_session_duration is not None:
+            params['MaxSessionDuration'] = max_session_duration
+        if tags is not None:
+            idx = 1
+            for k, v in tags.items():
+                params['Tags.member.%d.Key' % idx] = k
+                params['Tags.member.%d.Value' % idx] = v
+                idx += 1
+        return self.get_response('CreateRole', params, list_marker='Tags')
 
     def delete_instance_profile(self, instance_profile_name):
         """
@@ -1243,7 +1281,7 @@ class IAMConnection(AWSQueryConnection):
         :type role_name: string
         :param role_name: Name of the role associated with the policy.
         """
-        return self.get_response('GetRole', {'RoleName': role_name})
+        return self.get_response('GetRole', {'RoleName': role_name}, list_marker='Tags')
 
     def get_role_policy(self, role_name, policy_name):
         """
@@ -1345,6 +1383,41 @@ class IAMConnection(AWSQueryConnection):
         return self.get_response('ListRolePolicies', params,
                                  list_marker='PolicyNames')
 
+    def list_role_tags(self, role_name, marker=None, max_items=None):
+        """
+        Lists the tags that are attached to the specified role. The returned
+        list of tags is sorted by tag key. For more information about tagging,
+        see Tagging IAM Identities in the IAM User Guide.
+
+        :type role_name: string
+        :param role_name: The name of the IAM role for which you want to see
+            the list of tags.
+
+        :type marker: string
+        :param marker: Use this parameter only when paginating results and
+            only after you receive a response indicating that the results are
+            truncated. Set it to the value of the Marker element in the
+            response that you received to indicate where the next call should
+            start.
+
+        :type max_items: string
+        :param max_items: Use this only when paginating results to indicate
+            the maximum number of items that you want in the response. If
+            additional items exist beyond the maximum that you specify, the
+            IsTruncated response element is true.
+            If you do not include this parameter, it defaults to 100. Note
+            that IAM might return fewer results, even when more results are
+            available. In that case, the IsTruncated response element returns
+            true, and Marker contains a value to include in the subsequent
+            call that tells the service where to continue from.
+        """
+        params = {'RoleName': role_name}
+        if marker is not None:
+            params['Marker'] = marker
+        if max_items is not None:
+            params['MaxItems'] = max_items
+        return self.get_response('ListRoleTags', params, list_marker='Tags')
+
     def list_roles(self, path_prefix=None, marker=None, max_items=None):
         """
         Lists the roles that have the specified path prefix. If there are none,
@@ -1404,6 +1477,99 @@ class IAMConnection(AWSQueryConnection):
         return self.get_response('RemoveRoleFromInstanceProfile',
                                  {'InstanceProfileName': instance_profile_name,
                                   'RoleName': role_name})
+
+    def tag_role(self, role_name, tags):
+        """
+        Adds one or more tags to an IAM role. The role can be a regular role
+        or a service-linked role. If a tag with the same key name already
+        exists, then that tag is overwritten with the new value.
+
+        :type role_name: string
+        :param role_name: Name of the role to tag.
+
+        :type tags: dict of key values
+        :param tags: A dictionary of tags that you want to attach to the role. Each
+            tag consists of a key name and an associated value. For more
+            information about tagging, see Tagging IAM Identities in the IAM
+            User Guide.
+        """
+        params = {'RoleName': role_name}
+        idx = 1
+        for k, v in tags.items():
+            params['Tags.member.%d.Key' % idx] = k
+            params['Tags.member.%d.Value' % idx] = v
+            idx += 1
+        return self.get_response('TagRole', params)
+
+    def untag_role(self, role_name, tag_keys):
+        """
+        Removes the specified tags from the role. For more information about
+        tagging, see Tagging IAM Identities in the IAM User Guide.
+
+        :type role_name: string
+        :param role_name: Name of the role to tag.
+
+        :type tag_keys: list of tag key names
+        :param tag_keys: A list of tags key names that you want to remove from
+            a role. The tags with matching keys are removed from the specified
+            role.
+        """
+        params = {'RoleName': role_name}
+        idx = 1
+        for k in tag_keys:
+            params['TagKeys.member.%d' % idx] = k
+            idx += 1
+        return self.get_response('UntagRole', params)
+
+    def update_role(self, role_name, description=None, max_session_duration=None):
+        """
+        Update role description and/or max session duration.
+
+        :type role_name: string
+        :param role_name: Name of the role to update.
+
+        :type description: string
+        :param description: The new description that you want to apply to the
+               specified role.
+
+        :type max_session_duration: int or string
+        :param max_session_duration: The maximum session duration (in seconds)
+               that you want to set for the specified role. If you do not
+               specify a value for this setting, the default maximum of one
+               hour is applied. This setting can have a value from 1 hour to
+               12 hours.
+               Anyone who assumes the role from the AWS CLI or API can use the
+               DurationSeconds API parameter or the duration-seconds CLI
+               parameter to request a longer session. The MaxSessionDuration
+               setting determines the maximum duration that can be requested
+               using the DurationSeconds parameter. If users don't specify a
+               value for the DurationSeconds parameter, their security
+               credentials are valid for one hour by default. This applies
+               when you use the AssumeRole* API operations or the assume-role*
+               CLI operations but does not apply when you use those operations
+               to create a console URL. For more information, see Using IAM
+               Roles in the IAM User Guide.
+        """
+        params = {'RoleName': role_name}
+        if description:
+            params['Description'] = description
+        if max_session_duration:
+            params['MaxSessionDuration'] = max_session_duration
+        return self.get_response('UpdateRole', params)
+
+    def update_role_description(self, role_name, description):
+        """
+        Update role description.
+
+        :type role_name: string
+        :param role_name: Name of the role to update.
+
+        :type description: string
+        :param description: The new description that you want to apply to the
+               specified role.
+        """
+        params = {'RoleName': role_name, 'Description' : description}
+        return self.get_response('UpdateRoleDescription', params)
 
     def update_assume_role_policy(self, role_name, policy_document):
         """
@@ -1992,6 +2158,47 @@ class IAMConnection(AWSQueryConnection):
             'ListAttachedGroupPolicies',
             params,
             list_marker='AttachedPolicies')
+
+    def list_attached_role_policies(self, role_name, marker=None, max_items=None,
+                                    path_prefix=None):
+        """
+        List Attached Role policies.
+
+        :type role_name: string
+        :param role_name: The name of the role the policy is associated with.
+
+        :type marker: string
+        :param marker: Use this parameter only when paginating results and
+            only after you receive a response indicating that the results are
+            truncated. Set it to the value of the Marker element in the
+            response that you received to indicate where the next call should
+            start.
+
+        :type max_items: string
+        :param max_items: Use this only when paginating results to indicate
+            the maximum number of items you want in the response. If additional
+            items exist beyond the maximum you specify, the IsTruncated
+            response element is true.
+            If you do not include this parameter, the number of items defaults
+            to 100. Note that IAM might return fewer results, even when there
+            are more results available. In that case, the IsTruncated response
+            element returns true, and Marker contains a value to include in
+            the subsequent call that tells the service where to continue from.
+
+        :type path_prefix: string
+        :param path_prefix: The path prefix for filtering the results. This
+            parameter is optional. If it is not included, it defaults to a
+            slash (/), listing all policies.
+        """
+        params = {'RoleName': role_name}
+        if path_prefix is not None:
+            params['PathPrefix'] = path_prefix
+        if marker is not None:
+            params['Marker'] = marker
+        if max_items is not None:
+            params['MaxItems'] = max_items
+        return self.get_response('ListAttachedRolePolicies', params,
+                                 list_marker='AttachedPolicies')
 
     def list_attached_user_policies(self, user_name, marker=None, max_items=None,
                                     path_prefix=None):
