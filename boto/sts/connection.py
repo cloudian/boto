@@ -436,7 +436,7 @@ class STSConnection(AWSQueryConnection):
         if transitive_tag_keys:
             idx = 1
             for ttk in transitive_tag_keys:
-                params['TransitiveTagKey.member.%d' % idx] = ttk
+                params['TransitiveTagKeys.member.%d' % idx] = ttk
                 idx += 1
         return self.get_object('AssumeRole', params, AssumedRole, verb='POST')
 
