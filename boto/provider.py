@@ -64,6 +64,7 @@ REPLICATION_HEADER_KEY = 'replication-header'
 VERSION_ID_HEADER_KEY = 'version-id-header'
 RESTORE_HEADER_KEY = 'restore-header'
 TAGGING_COUNT_HEADER_KEY = 'tagging-count-header'
+MP_PARTS_COUNT_HEADER_KEY = 'mp-parts-count-header'
 
 BUCKET_OBJECT_LOCK_ENABLED_HEADER_KEY = 'bucket-object-lock-enabled-header'
 OBJECT_LOCK_MODE_HEADER_KEY = 'object-lock-mode-header'
@@ -146,6 +147,7 @@ class Provider(object):
             MFA_HEADER_KEY: AWS_HEADER_PREFIX + 'mfa',
             RESTORE_HEADER_KEY: AWS_HEADER_PREFIX + 'restore',
             TAGGING_COUNT_HEADER_KEY: AWS_HEADER_PREFIX + 'tagging-count',
+            MP_PARTS_COUNT_HEADER_KEY: AWS_HEADER_PREFIX + 'mp-parts-count',
             BUCKET_OBJECT_LOCK_ENABLED_HEADER_KEY: AWS_HEADER_PREFIX + 'bucket-object-lock-enabled',
             OBJECT_LOCK_MODE_HEADER_KEY: AWS_HEADER_PREFIX + 'object-lock-mode',
             OBJECT_LOCK_RETAIN_UNTIL_DATE_HEADER_KEY: AWS_HEADER_PREFIX + 'object-lock-retain-until-date',
@@ -176,6 +178,7 @@ class Provider(object):
             MFA_HEADER_KEY: None,
             RESTORE_HEADER_KEY: None,
             TAGGING_COUNT_HEADER_KEY: None,
+            MP_PARTS_COUNT_HEADER_KEY: None,
             BUCKET_OBJECT_LOCK_ENABLED_HEADER_KEY: None,
             OBJECT_LOCK_MODE_HEADER_KEY: None,
             OBJECT_LOCK_RETAIN_UNTIL_DATE_HEADER_KEY: None,
@@ -488,6 +491,7 @@ class Provider(object):
         self.mfa_header = header_info_map[MFA_HEADER_KEY]
         self.restore_header = header_info_map[RESTORE_HEADER_KEY]
         self.tagging_count_header = header_info_map[TAGGING_COUNT_HEADER_KEY]
+        self.mp_parts_count_header = header_info_map[MP_PARTS_COUNT_HEADER_KEY]
         self.bucket_object_lock_enabled_header = header_info_map[BUCKET_OBJECT_LOCK_ENABLED_HEADER_KEY]
         self.object_lock_mode_header = header_info_map[OBJECT_LOCK_MODE_HEADER_KEY]
         self.object_lock_retain_until_date_header = header_info_map[OBJECT_LOCK_RETAIN_UNTIL_DATE_HEADER_KEY]
