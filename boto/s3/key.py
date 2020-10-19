@@ -141,6 +141,7 @@ class Key(object):
         self.etag = None
         self.hyperstore = None
         self.tagging_count = None
+        self.mp_parts_count = None
         self.is_latest = False
         self.last_modified = None
         self.owner = None
@@ -261,6 +262,14 @@ class Key(object):
                 provider.tagging_count_header, None)
         else:
             self.tagging_count = None
+
+    def handle_mp_parts_count_headers(self, resp):
+        provider = self.bucket.connection.provider
+        if provider.mp_parts_count_header:
+            self.mp_parts_count = resp.getheader(
+                provider.mp_parts_count_header, None)
+        else:
+            self.mp_parts_count = None
 
     def handle_object_lock_headers(self, resp):
         provider = self.bucket.connection.provider
@@ -389,6 +398,7 @@ class Key(object):
             self.handle_replication_headers(self.resp)
             self.handle_restore_headers(self.resp)
             self.handle_tagging_count_headers(self.resp)
+            self.handle_mp_parts_count_headers(self.resp)
             self.handle_object_lock_headers(self.resp)
             self.handle_addl_headers(self.resp.getheaders())
 
