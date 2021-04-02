@@ -23,6 +23,81 @@ from boto.compat import six
 from boto.s3.tagging import Tag
 
 class FilterSet(object):
+    """
+    Reference:
+    https://docs.aws.amazon.com/AmazonS3/latest/userguide/intro-lifecycle-rules.html#intro-lifecycle-rules-filter
+
+    - Specifying a filter based on object tag
+
+    <LifecycleConfiguration>
+        <Rule>
+            <Filter>
+               <Tag>
+                  <Key>key</Key>
+                  <Value>value</Value>
+               </Tag>
+            </Filter>
+            transition/expiration actions.
+        </Rule>
+    </LifecycleConfiguration>
+
+    - Specifying a filter based on multiple tags.
+      You must wrap the tags in the <AND> element shown in the following example.
+
+    <LifecycleConfiguration>
+        <Rule>
+          <Filter>
+             <And>
+                <Tag>
+                   <Key>key1</Key>
+                   <Value>value1</Value>
+                </Tag>
+                <Tag>
+                   <Key>key2</Key>
+                   <Value>value2</Value>
+                </Tag>
+                 ...
+              </And>
+          </Filter>
+          transition/expiration actions.
+        </Rule>
+    </Lifecycle>
+
+    - Specifying a filter based on both prefix and one or more tags
+
+    <LifecycleConfiguration>
+        <Rule>
+            <Filter>
+              <And>
+                 <Prefix>key-prefix</Prefix>
+                 <Tag>
+                    <Key>key1</Key>
+                    <Value>value1</Value>
+                 </Tag>
+                 <Tag>
+                    <Key>key2</Key>
+                    <Value>value2</Value>
+                 </Tag>
+                  ...
+              </And>
+            </Filter>
+            <Status>Enabled</Status>
+            transition/expiration actions.
+        </Rule>
+    </LifecycleConfiguration>
+
+    - Specifying an empty filter, in which case the rule applies to all objects in the bucket.
+
+    <LifecycleConfiguration>
+        <Rule>
+            <Filter>
+            </Filter>
+            <Status>Enabled</Status>
+            transition/expiration actions.
+        </Rule>
+    </LifecycleConfiguration>
+    """
+
     def __init__(self, prefix='', tag_list=[]):
         self.prefix = prefix
         self.tag_list = tag_list
