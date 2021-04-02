@@ -127,7 +127,7 @@ class FilterSet(object):
         if (len(self.tag_list) > 1 or
             (self.prefix != '' and len(self.tag_list) > 0)):
             and_tag = True
-        xml = '<Filter>'
+        xml = ''
         if and_tag:
             xml += '<And>'
         if self.prefix != '':
@@ -136,7 +136,6 @@ class FilterSet(object):
             xml += tag.to_xml()
         if and_tag:
             xml += '</And>'
-        xml += '</Filter>'
         return xml
 
 class Rule(object):
@@ -252,8 +251,12 @@ class Rule(object):
         if self.id is not None:
             s += '<ID>%s</ID>' % self.id
         if self.filter:
-            if self.filter_set is not None:
+            s += '<Filter>'
+            if self.prefix != '':
+                s += '<Prefix>%s</Prefix>' % self.prefix
+            elif self.filter_set is not None:
                 s += self.filter_set.to_xml()
+            s += '</Filter>'
         else:
             if self.prefix != '':
                 s += '<Prefix>%s</Prefix>' % self.prefix
