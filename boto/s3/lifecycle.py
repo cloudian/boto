@@ -20,6 +20,124 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 from boto.compat import six
+from boto.s3.tagging import Tag
+
+class FilterSet(object):
+    """
+    Reference:
+    https://docs.aws.amazon.com/AmazonS3/latest/userguide/intro-lifecycle-rules.html#intro-lifecycle-rules-filter
+
+    - Specifying a filter based on object tag
+
+    <LifecycleConfiguration>
+        <Rule>
+            <Filter>
+               <Tag>
+                  <Key>key</Key>
+                  <Value>value</Value>
+               </Tag>
+            </Filter>
+            transition/expiration actions.
+        </Rule>
+    </LifecycleConfiguration>
+
+    - Specifying a filter based on multiple tags.
+      You must wrap the tags in the <AND> element shown in the following example.
+
+    <LifecycleConfiguration>
+        <Rule>
+          <Filter>
+             <And>
+                <Tag>
+                   <Key>key1</Key>
+                   <Value>value1</Value>
+                </Tag>
+                <Tag>
+                   <Key>key2</Key>
+                   <Value>value2</Value>
+                </Tag>
+                 ...
+              </And>
+          </Filter>
+          transition/expiration actions.
+        </Rule>
+    </Lifecycle>
+
+    - Specifying a filter based on both prefix and one or more tags
+
+    <LifecycleConfiguration>
+        <Rule>
+            <Filter>
+              <And>
+                 <Prefix>key-prefix</Prefix>
+                 <Tag>
+                    <Key>key1</Key>
+                    <Value>value1</Value>
+                 </Tag>
+                 <Tag>
+                    <Key>key2</Key>
+                    <Value>value2</Value>
+                 </Tag>
+                  ...
+              </And>
+            </Filter>
+            <Status>Enabled</Status>
+            transition/expiration actions.
+        </Rule>
+    </LifecycleConfiguration>
+
+    - Specifying an empty filter, in which case the rule applies to all objects in the bucket.
+
+    <LifecycleConfiguration>
+        <Rule>
+            <Filter>
+            </Filter>
+            <Status>Enabled</Status>
+            transition/expiration actions.
+        </Rule>
+    </LifecycleConfiguration>
+    """
+
+    def __init__(self, prefix='', tag_list=[]):
+        self.prefix = prefix
+        self.tag_list = tag_list
+
+    def startElement(self, name, attrs, connection):
+        if name == 'Tag':
+            tag = Tag()
+            self.tag_list.append(tag)
+            return tag
+        return None
+
+    def endElement(self, name, value, connection):
+        if name == 'Prefix':
+            self.prefix = value
+        else:
+            setattr(self, name, value)
+
+    def add_tag(self, key, value):
+        tag = Tag(key, value)
+        self.tag_list.append(tag)
+
+    def set_prefix(self, prefix):
+        self.prefix = prefix
+
+    def to_xml(self):
+        and_tag = False
+        if (len(self.tag_list) > 1 or
+            (self.prefix != '' and len(self.tag_list) > 0)):
+            and_tag = True
+        xml = '<Filter>'
+        if and_tag:
+            xml += '<And>'
+        if self.prefix != '':
+            xml += '<Prefix>%s</Prefix>' % self.prefix
+        for tag in self.tag_list:
+            xml += tag.to_xml()
+        if and_tag:
+            xml += '</And>'
+        xml += '</Filter>'
+        return xml
 
 class Rule(object):
     """
@@ -32,6 +150,12 @@ class Rule(object):
     :ivar prefix: Prefix identifying one or more objects to which the
         rule applies. If prefix is not provided, Boto generates a default
         prefix which will match all objects.
+
+    :ivar filter: For backward compatibility. Default is True.
+                  If True, <Filter> element is used.
+
+    :ivar filter_set: An instance of `FilterSet`. This indicates
+         a filter based on both the key prefix and one or more tags.
 
     :ivar status: If 'Enabled', the rule is currently being applied.
         If 'Disabled', the rule is not currently being applied.
@@ -52,12 +176,13 @@ class Rule(object):
         non-current objects transitions to a different storage class. 
 
     """
-    def __init__(self, id=None, prefix=None, filter=None, status=None,
-                 expiration=None, transition=None, abortUpload = None,
-                 ncExpiration = None, ncTransition = None):
+    def __init__(self, id=None, prefix='', filter=True, filter_set=None,
+                 status=None, expiration=None, transition=None,
+                 abortUpload=None, ncExpiration=None, ncTransition=None):
         self.id = id
-        self.prefix = '' if prefix is None else prefix
+        self.prefix = prefix
         self.filter = filter
+        self.filter_set = filter_set
         self.status = status
         if isinstance(expiration, six.integer_types):
             # retain backwards compatibility???
@@ -105,6 +230,9 @@ class Rule(object):
             return self.ncTransition
         elif name == 'NoncurrentVersionExpiration':
             return self.ncExpiration
+        elif name == 'Filter':
+            self.filter_set = FilterSet()
+            return self.filter_set
         return None
 
     def endElement(self, name, value, connection):
@@ -123,12 +251,12 @@ class Rule(object):
         s = '<Rule>'
         if self.id is not None:
             s += '<ID>%s</ID>' % self.id
-        if self.filter is not None:
-            s += '<Filter>'
-            s += '<Prefix>%s</Prefix>' % self.prefix
-            s += '</Filter>'
+        if self.filter:
+            if self.filter_set is not None:
+                s += self.filter_set.to_xml()
         else:
-            s += '<Prefix>%s</Prefix>' % self.prefix
+            if self.prefix != '':
+                s += '<Prefix>%s</Prefix>' % self.prefix
         s += '<Status>%s</Status>' % self.status
         if self.expiration is not None:
             s += self.expiration.to_xml()
@@ -378,9 +506,9 @@ class Lifecycle(list):
         s += '</LifecycleConfiguration>'
         return s
 
-    def add_rule(self, id=None, prefix='', filter=None, status='Enabled',
-                 expiration=None, transition=None, abortUpload=None,
-                 ncExpiration = None, ncTransition = None):
+    def add_rule(self, id=None, prefix='', filter=True, filter_set=None,
+                 status='Enabled', expiration=None, transition=None,
+                 abortUpload=None, ncExpiration = None, ncTransition = None):
         """
         Add a rule to this Lifecycle configuration.  This only adds
         the rule to the local copy.  To install the new rule(s) on
@@ -396,9 +524,13 @@ class Lifecycle(list):
         :iparam prefix: Prefix identifying one or more objects to which the
             rule applies.
 
-        :type filter: str
-        :iparam filter: If not None, <Filter> and </Filter> elements will
+        :type filter: bool
+        :iparam filter: If True, <Filter> and </Filter> elements will
             be added in lifecycle xml rule.
+
+        :type filter_set: FilterSet
+        :iparam filter_set: Indicates a filter based on both the key prefix
+            and one or more tags.
 
         :type status: str
         :param status: If 'Enabled', the rule is currently being applied.
@@ -426,6 +558,6 @@ class Lifecycle(list):
             expired delete markers shall be automatically expired.
 
         """
-        rule = Rule(id, prefix, filter, status, expiration, transition,
-                    abortUpload, ncExpiration, ncTransition)
+        rule = Rule(id, prefix, filter, filter_set, status, expiration,
+                    transition, abortUpload, ncExpiration, ncTransition)
         self.append(rule)
