@@ -177,9 +177,10 @@ class InventoryEncryption(object):
 
     def to_xml(self):
         s = ''
-        if self.kms_keyid.kms_keyid is not None or self.s3 is not None:
+        is_kms = self.kms_keyid.kms_keyid is not None and self.kms_keyid.kms_keyid is not None
+        if is_kms or self.s3 is not None:
             s += '<Encryption>'
-            if self.kms_keyid is not None and self.kms_keyid.kms_keyid is not None:
+            if is_kms:
                 s += self.kms_keyid.to_xml()
             if self.s3 is not None:
                 s += '<SSE-S3>'
