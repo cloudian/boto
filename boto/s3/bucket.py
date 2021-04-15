@@ -39,7 +39,7 @@ from boto.s3.bucketlistresultset import VersionedBucketListResultSet
 from boto.s3.bucketlistresultset import MultiPartUploadListResultSet
 from boto.s3.lifecycle import Lifecycle
 from boto.s3.crr import CRR
-from boto.s3.inventory import Inventory, Inventories
+from boto.s3.inventory import Inventory, InventoryConfiguration
 from boto.s3.tagging import Tags
 from boto.s3.olconfig import OLConfiguration
 from boto.s3.cors import CORSConfiguration
@@ -2454,6 +2454,22 @@ class Bucket(object):
         return olc
 
     def configure_inventory(self, id, inventory, headers=None):
+        """
+        Configure Bucket Inventory Configuration for this bucket.
+
+        :type id: str
+        :param id: The ID used to identify the inventory configuration.
+
+        :type inventory: Inventory
+        :param inventory: Specifies the inventory configuration for an S3 bucket.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+
+        :rtype: bool
+        :returns: True if the configuration succeeds or else
+                  throws an exception
+        """
         xml = inventory.to_xml()
         fp = StringIO(xml)
         query_args = 'inventory'
@@ -2469,7 +2485,21 @@ class Bucket(object):
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
 
-    def get_inventory_config(self, id, headers=None):
+    def get_inventory_configuration(self, id, headers=None):
+        """
+        Returns an inventory configuration (identified by the inventory configuration ID)
+        from the bucket.
+
+        :type id: str
+        :param id: The ID used to identify the inventory configuration.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+
+        :rtype: Inventory
+        :returns: Inventory if the get configuration succeeds or else
+                  throws an exception
+        """
         query_args = 'inventory'
         query_args += '&id=%s' % id
         response = self.connection.make_request('GET', self.name,
@@ -2488,6 +2518,20 @@ class Bucket(object):
                 response.status, response.reason, body)
 
     def delete_inventory_configuration(self, id, headers=None):
+        """
+        Deletes an inventory configuration (identified by the inventory ID)
+        from the bucket.
+
+        :type id: str
+        :param id: The ID used to identify the inventory configuration.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+
+        :rtype: bool
+        :returns: True if the delete configuration succeeds or else
+                  throws an exception
+        """
         query_args = 'inventory'
         query_args += '&id=%s' % id
         response = self.connection.make_request('DELETE', self.name,
@@ -2502,6 +2546,33 @@ class Bucket(object):
                 response.status, response.reason, body)
 
     def list_inventory_configurations(self, continuation_token=None, headers=None):
+        """
+        Returns a list of inventory configurations for the bucket.
+        You can have up to 1,000 analytics configurations per bucket.
+
+        This action supports list pagination and does not return more
+        than 100 configurations at a time.
+        Always check the IsTruncated element in the response.
+        If there are no more configurations to list, IsTruncated is set to false.
+        If there are more configurations to list, IsTruncated is set to true,
+        and there is a value in NextContinuationToken.
+        You use the NextContinuationToken value to continue the pagination of
+        the list by passing the value in continuation-token in the request
+        to GET the next page.
+
+        :type continuation_token: str
+        :param continuation_token: The marker used to continue an inventory
+            configuration listing that has been truncated.
+            Use the NextContinuationToken from a previously truncated list
+            response to continue the listing.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+
+        :rtype: InventoryConfiguration
+        :returns: InventoryConfiguration if the list configurations succeeds or else
+                  throws an exception
+        """
         query_args = 'inventory'
         if continuation_token is not None:
             query_args += '&continuation-token=%s' % continuation_token
@@ -2510,12 +2581,12 @@ class Bucket(object):
         body = response.read()
         boto.log.debug(body)
         if response.status == 200:
-            inventories = Inventories()
-            h = handler.XmlHandler(inventories, self)
+            inventory_configuration = InventoryConfiguration()
+            h = handler.XmlHandler(inventory_configuration, self)
             if not isinstance(body, bytes):
                 body = body.encode('utf-8')
             xml.sax.parseString(body, h)
-            return inventories
+            return inventory_configuration
         else:
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
