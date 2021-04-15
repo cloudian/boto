@@ -81,6 +81,13 @@ from boto.compat import six
 """
 
 class InventoryFilter(object):
+    """
+    Specifies an inventory filter. The inventory only includes objects
+    that meet the filter's criteria.
+
+    :ivar prefix: The prefix that an object must have to be included
+        in the inventory results.
+    """
     def __init__(self, prefix=None):
         self.prefix = prefix
     def startElement(self, name, attrs, connection):
@@ -97,6 +104,12 @@ class InventoryFilter(object):
         return s
 
 class InventorySchedule(object):
+    """
+    Specifies the schedule for generating inventory results.
+
+    :ivar frequency: Specifies how frequently inventory results
+        are produced. Valid Values: "Daily" | "Weekly"
+    """
     def __init__(self, frequency=None):
         self.frequency = frequency
     def startElement(self, name, attrs, connection):
@@ -113,6 +126,13 @@ class InventorySchedule(object):
         return s
 
 class KMSKeyId(object):
+    """
+    Specifies the use of SSE-KMS to encrypt delivered inventory reports.
+
+    :ivar kms_keyid: Specifies the ID of the AWS Key Management Service
+        (AWS KMS) symmetric customer managed customer master key (CMK)
+        to use for encrypting inventory reports.
+    """
     def __init__(self, kms_keyid=None):
         self.kms_keyid = kms_keyid
     def startElement(self, name, attrs, connection):
@@ -129,6 +149,16 @@ class KMSKeyId(object):
         return s
 
 class InventoryEncryption(object):
+    """
+    Contains the type of server-side encryption used to encrypt
+    the inventory results.
+
+    :ivar kms_keyid: Specifies the use of SSE-KMS to encrypt
+        delivered inventory reports.
+
+    :ivar s3: Specifies the use of SSE-S3 to encrypt delivered
+        inventory reports.
+    """
     def __init__(self, kms_keyid=None, s3=None):
         if kms_keyid:
             self.kms_keyid = kms_keyid
@@ -158,6 +188,25 @@ class InventoryEncryption(object):
         return s
 
 class S3BucketDestination(object):
+    """
+    Contains the bucket name, file format, bucket owner (optional),
+    and prefix (optional) where inventory results are published.
+
+    :ivar bname: The Amazon Resource Name (ARN) of the bucket where
+        inventory results will be published.
+
+    :ivar account_id: The account ID that owns the destination S3 bucket.
+        If no account ID is provided, the owner is not validated before
+        exporting data.
+
+    :ivar format: Specifies the output format of the inventory results.
+        Valid Values: "CSV" | "ORC" | "Parquet"
+
+    :ivar prefix: The prefix that is prepended to all inventory results.
+
+    :ivar encryption: Contains the type of server-side encryption used
+        to encrypt the inventory results.
+    """
     def __init__(self, bname=None, account_id=None, format=None, prefix=None,
                  encryption=None):
         self.bname = bname
@@ -202,6 +251,13 @@ class S3BucketDestination(object):
         return s
 
 class InventoryDestination(object):
+    """
+    Specifies the inventory configuration for an Amazon S3 bucket.
+
+    :ivar s3_bucket_destination: Contains the bucket name, file format,
+        bucket owner (optional), and prefix (optional) where inventory
+        results are published.
+    """
     def __init__(self, s3_bucket_destination=None):
         if s3_bucket_destination:
             self.s3_bucket_destination = s3_bucket_destination
@@ -223,10 +279,14 @@ class InventoryDestination(object):
         return s
 
 class InventoryOptionalFields(list):
+    """
+    Contains the optional fields that are included in the inventory results.
+
+    """
     # Valid Values: Size | LastModifiedDate | StorageClass | ETag |
     #               IsMultipartUploaded | ReplicationStatus | EncryptionStatus |
-    #               ObjectLockRetainUntilDate | ObjectLockMode | ObjectLockLegalHoldStatus |
-    #               IntelligentTieringAccessTier
+    #               ObjectLockRetainUntilDate | ObjectLockMode | 
+    #               ObjectLockLegalHoldStatus | IntelligentTieringAccessTier
     def __init__(self, size=None, last_modified_date=None, storage_class=None,
                  etag=None, is_multipart_uploaded=None, replication_status=None,
                  encryption_status=None, object_lock_retain_until_date=None,
@@ -272,6 +332,32 @@ class InventoryOptionalFields(list):
         return s
 
 class Inventory(object):
+    """
+    Specifies the inventory configuration for an Amazon S3 bucket.
+
+    :ivar id: The ID used to identify the inventory configuration.
+
+    :ivar is_enabled: Specifies whether the inventory is enabled or disabled.
+        If set to "true", an inventory list is generated.
+        If set to "false", no inventory list is generated.
+
+    :ivar included_object_versions: Object versions to include in the inventory list.
+        If set to "All", the list includes all the object versions, which adds
+        the version-related fields VersionId, IsLatest, and DeleteMarker to the list.
+        If set to "Current", the list does not contain these version-related fields.
+        Valid Values: "All" | "Current".
+
+    :ivar filter: Specifies an inventory filter. The inventory only includes objects
+        that meet the filter's criteria.
+
+    :ivar schedule: Specifies the schedule for generating inventory results.
+
+    :ivar destination: Contains information about where to publish
+        the inventory results.
+
+    :ivar optional_fields: Contains the optional fields that are included
+        in the inventory results.
+    """
     def __init__(self, id=None, is_enabled=None,
                  included_object_versions=None,
                  filter=None,  schedule=None,
@@ -339,7 +425,10 @@ class Inventory(object):
         s += '</InventoryConfiguration>'
         return s
 
-class Inventories(list):
+class InventoryConfiguration(list):
+    """
+    A container for the inventories associated with a Bucket Inventory Configuration.
+    """
     def __init__(self):
         self.is_truncated = None
         self.continuation_token = None
@@ -378,6 +467,39 @@ class Inventories(list):
 
     def add_inventory(self, id=None, is_enabled=None, included_object_versions=None,
                       filter=None, schedule=None, destination=None, optional_fields=None):
+        """
+        Add an inventory to this Bucket Inventory Configuration.
+
+        :type id: str
+        :param id: The ID used to identify the inventory configuration.
+
+        :type is_enabled: str
+        :param is_enabled: Specifies whether the inventory is enabled or disabled.
+            If set to "true", an inventory list is generated.
+            If set to "false", no inventory list is generated.
+
+        :type included_object_versions: str
+        :param included_object_versions: Object versions to include in the inventory list.
+            If set to "All", the list includes all the object versions, which adds
+            the version-related fields VersionId, IsLatest, and DeleteMarker to the list.
+            If set to "Current", the list does not contain these version-related fields.
+            Valid Values: "All" | "Current".
+
+        :type filter: InventoryFilter
+        :param filter: Specifies an inventory filter. The inventory only includes objects
+            that meet the filter's criteria.
+
+        :type schedule: InventorySchedule
+        :param schedule: Specifies the schedule for generating inventory results.
+
+        :type destination: InventoryDestination
+        :param destination: Contains information about where to publish
+            the inventory results.
+
+        :type optional_fields: InventoryOptionalFields
+        :param optional_fields: Contains the optional fields that are included
+            in the inventory results.
+        """
         inventory = Inventory(id, is_enabled, included_object_versions,
                               filter, schedule, destination, optional_fields)
         self.append(inventory)
