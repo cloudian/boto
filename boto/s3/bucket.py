@@ -39,6 +39,7 @@ from boto.s3.bucketlistresultset import VersionedBucketListResultSet
 from boto.s3.bucketlistresultset import MultiPartUploadListResultSet
 from boto.s3.lifecycle import Lifecycle
 from boto.s3.crr import CRR
+from boto.s3.inventory import Inventory, Inventories
 from boto.s3.tagging import Tags
 from boto.s3.olconfig import OLConfiguration
 from boto.s3.cors import CORSConfiguration
@@ -2451,3 +2452,70 @@ class Bucket(object):
             response = response.encode('utf-8')
         xml.sax.parseString(response, h)
         return olc
+
+    def configure_inventory(self, id, inventory, headers=None):
+        xml = inventory.to_xml()
+        fp = StringIO(xml)
+        query_args = 'inventory'
+        query_args += '&id=%s' % id
+        response = self.connection.make_request('PUT', self.name,
+                                                data=fp.getvalue(),
+                                                query_args=query_args,
+                                                headers=headers)
+        body = response.read()
+        if response.status == 204:
+            return True
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def get_inventory_config(self, id, headers=None):
+        query_args = 'inventory'
+        query_args += '&id=%s' % id
+        response = self.connection.make_request('GET', self.name,
+                query_args=query_args, headers=headers)
+        body = response.read()
+        boto.log.debug(body)
+        if response.status == 200:
+            inventory = Inventory()
+            h = handler.XmlHandler(inventory, self)
+            if not isinstance(body, bytes):
+                body = body.encode('utf-8')
+            xml.sax.parseString(body, h)
+            return inventory
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def delete_inventory_configuration(self, id, headers=None):
+        query_args = 'inventory'
+        query_args += '&id=%s' % id
+        response = self.connection.make_request('DELETE', self.name,
+                                                query_args=query_args,
+                                                headers=headers)
+        body = response.read()
+        boto.log.debug(body)
+        if response.status == 204:
+            return True
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def list_inventory_configurations(self, continuation_token=None, headers=None):
+        query_args = 'inventory'
+        if continuation_token is not None:
+            query_args += '&continuation-token=%s' % continuation_token
+        response = self.connection.make_request('GET', self.name,
+                query_args=query_args, headers=headers)
+        body = response.read()
+        boto.log.debug(body)
+        if response.status == 200:
+            inventories = Inventories()
+            h = handler.XmlHandler(inventories, self)
+            if not isinstance(body, bytes):
+                body = body.encode('utf-8')
+            xml.sax.parseString(body, h)
+            return inventories
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
