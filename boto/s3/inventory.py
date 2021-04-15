@@ -125,26 +125,26 @@ class InventorySchedule(object):
             s += '</Schedule>'
         return s
 
-class KMSKeyId(object):
+class KMS(object):
     """
     Specifies the use of SSE-KMS to encrypt delivered inventory reports.
 
-    :ivar kms_keyid: Specifies the ID of the AWS Key Management Service
+    :ivar keyid: Specifies the ID of the AWS Key Management Service
         (AWS KMS) symmetric customer managed customer master key (CMK)
         to use for encrypting inventory reports.
     """
-    def __init__(self, kms_keyid=None):
-        self.kms_keyid = kms_keyid
+    def __init__(self, keyid=None):
+        self.keyid = keyid
     def startElement(self, name, attrs, connection):
         return None
     def endElement(self, name, value, connection):
         if name == 'KeyId':
-            self.kms_keyid = value
+            self.keyid = value
     def to_xml(self):
         s = ''
-        if self.kms_keyid is not None:
+        if self.keyid is not None:
             s += '<SSE-KMS>'
-            s += '<KeyId>%s</KeyId>' % self.kms_keyid
+            s += '<KeyId>%s</KeyId>' % self.keyid
             s += '</SSE-KMS>'
         return s
 
@@ -153,22 +153,22 @@ class InventoryEncryption(object):
     Contains the type of server-side encryption used to encrypt
     the inventory results.
 
-    :ivar kms_keyid: Specifies the use of SSE-KMS to encrypt
+    :ivar kms: Specifies the use of SSE-KMS to encrypt
         delivered inventory reports.
 
     :ivar s3: Specifies the use of SSE-S3 to encrypt delivered
         inventory reports.
     """
-    def __init__(self, kms_keyid=None, s3=None):
-        if kms_keyid:
-            self.kms_keyid = kms_keyid
+    def __init__(self, kms=None, s3=None):
+        if kms:
+            self.kms = kms
         else:
-            self.kms_keyid = KMSKeyId()
+            self.kms = KMS()
         self.s3 = s3
 
     def startElement(self, name, attrs, connection):
         if name == 'SSE-KMS':
-            return self.kms_keyid
+            return self.kms
         return None
 
     def endElement(self, name, value, connection):
@@ -177,11 +177,11 @@ class InventoryEncryption(object):
 
     def to_xml(self):
         s = ''
-        is_kms = self.kms_keyid.kms_keyid is not None and self.kms_keyid.kms_keyid is not None
+        is_kms = self.kms is not None and self.kms.keyid is not None
         if is_kms or self.s3 is not None:
             s += '<Encryption>'
             if is_kms:
-                s += self.kms_keyid.to_xml()
+                s += self.kms.to_xml()
             if self.s3 is not None:
                 s += '<SSE-S3>'
                 s += '</SSE-S3>'
