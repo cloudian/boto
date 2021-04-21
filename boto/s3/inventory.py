@@ -156,10 +156,10 @@ class InventoryEncryption(object):
     :ivar kms: Specifies the use of SSE-KMS to encrypt
         delivered inventory reports.
 
-    :ivar s3: Specifies the use of SSE-S3 to encrypt delivered
-        inventory reports.
+    :ivar s3: If True, the use of SSE-S3 to encrypt delivered
+        inventory reports. Default is False.
     """
-    def __init__(self, kms=None, s3=None):
+    def __init__(self, kms=None, s3=False):
         if kms:
             self.kms = kms
         else:
@@ -178,11 +178,11 @@ class InventoryEncryption(object):
     def to_xml(self):
         s = ''
         is_kms = self.kms is not None and self.kms.keyid is not None
-        if is_kms or self.s3 is not None:
+        if is_kms or self.s3:
             s += '<Encryption>'
             if is_kms:
                 s += self.kms.to_xml()
-            if self.s3 is not None:
+            if self.s3:
                 s += '<SSE-S3>'
                 s += '</SSE-S3>'
             s += '</Encryption>'
