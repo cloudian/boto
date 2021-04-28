@@ -1037,6 +1037,7 @@ class AWSAuthConnection(object):
                     # that's the case we need to split them up properly
                     if ':' in request.host:
                         request.host, request.port = request.host.split(':', 1)
+                        request.port = int(request.port)
                     msg = 'Redirecting: %s' % scheme + '://'
                     msg += request.host + request.path
                     boto.log.debug(msg)
