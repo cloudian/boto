@@ -98,9 +98,9 @@ class FilterSet(object):
     </LifecycleConfiguration>
     """
 
-    def __init__(self, prefix='', tag_list=[]):
+    def __init__(self, prefix='', tag_list=None):
         self.prefix = prefix
-        self.tag_list = tag_list
+        self.tag_list = tag_list or []
 
     def startElement(self, name, attrs, connection):
         if name == 'Tag':
