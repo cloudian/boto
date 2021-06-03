@@ -101,6 +101,13 @@ class Bucket(object):
        </VirtualizationConfiguration>"""
     VirtualizationRE = '<Status>([A-Za-z]+?)</Status>'
 
+    OwnershipControlsBody = """<?xml version="1.0" encoding="UTF-8"?>
+       <OwnershipControls xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+         <Rule>
+           <ObjectOwnership>%s</ObjectOwnership>
+         </Rule>
+       </OwnershipControls>"""
+
     def __init__(self, connection=None, name=None, key_class=Key):
         self.name = name
         self.policyid = None
@@ -2590,3 +2597,71 @@ class Bucket(object):
         else:
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
+
+    def configure_bucketownership_controls(self, objectownership, headers=None):
+        """
+        Configure OwnershipControls for this bucket.
+
+        :type objectownership: str
+        :param objectownership: object ownership for a bucket's ownership controls
+            BucketOwnerPreferred - Objects uploaded to the bucket change ownership
+                                   to the bucket owner if the objects are uploaded
+                                   with the bucket-owner-full-control canned ACL.
+            ObjectWriter - The uploading account will own the object if the object
+                           is uploaded with the bucket-owner-full-control canned ACL.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+        """
+
+        query_args = 'ownershipControls'
+        data = self.OwnershipControlsBody % (objectownership)
+        response = self.connection.make_request('PUT', self.name,
+                                                data=data,
+                                                query_args=query_args,
+                                                headers=headers)
+        body = response.read()
+        if response.status == 200:
+            return True
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def get_bucketownership_controls(self, headers=None):
+        """
+        Get OwnershipControls for this bucket.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+        """
+
+        query_args = 'ownershipControls'
+        response = self.connection.make_request('GET', self.name,
+                                                query_args=query_args,
+                                                headers=headers)
+        body = response.read()
+        if response.status == 200:
+            return body
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def delete_bucketownership_controls(self, headers=None):
+        """
+        Delete OwnershipControls for this bucket.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+        """
+
+        query_args = 'ownershipControls'
+        response = self.connection.make_request('DELETE', self.name,
+                                                query_args=query_args,
+                                                headers=headers)
+        body = response.read()
+        if response.status == 204:
+            return True
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
