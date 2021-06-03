@@ -2050,7 +2050,7 @@ class Bucket(object):
         :param cors_config: The CORS configuration you want
             to configure for this bucket.
         """
-        return self.set_cors_xml(cors_config.to_xml())
+        return self.set_cors_xml(cors_config.to_xml(), headers=headers)
 
     def get_cors_xml(self, headers=None):
         """
@@ -2257,7 +2257,7 @@ class Bucket(object):
     def delete(self, headers=None):
         return self.connection.delete_bucket(self.name, headers=headers)
 
-    def configure_virtualization(self, virtualization):
+    def configure_virtualization(self, virtualization, headers=None):
         """
         Configure virtualization for this bucket.
 
@@ -2274,7 +2274,7 @@ class Bucket(object):
             status = 'Disabled'
         body = self.VirtualizationBody % (status)
         response = self.connection.make_request('PUT', self.name, data=body,
-                query_args='virtualization')
+                query_args='virtualization', headers=headers)
         body = response.read()
         if response.status == 200:
             return True
