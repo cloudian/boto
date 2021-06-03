@@ -1369,7 +1369,7 @@ class Bucket(object):
         policy = self.get_acl(headers=headers)
         return policy.acl.grants
 
-    def get_location(self):
+    def get_location(self, headers=None):
         """
         Returns the LocationConstraint for the bucket.
 
@@ -1378,7 +1378,8 @@ class Bucket(object):
             string if no constraint was specified when bucket was created.
         """
         response = self.connection.make_request('GET', self.name,
-                                                query_args='location')
+                                                query_args='location',
+                                                headers=headers)
         body = response.read()
         if response.status == 200:
             rs = ResultSet(self)
@@ -2048,7 +2049,7 @@ class Bucket(object):
         :param cors_config: The CORS configuration you want
             to configure for this bucket.
         """
-        return self.set_cors_xml(cors_config.to_xml())
+        return self.set_cors_xml(cors_config.to_xml(), headers=headers)
 
     def get_cors_xml(self, headers=None):
         """
@@ -2255,7 +2256,7 @@ class Bucket(object):
     def delete(self, headers=None):
         return self.connection.delete_bucket(self.name, headers=headers)
 
-    def configure_virtualization(self, virtualization):
+    def configure_virtualization(self, virtualization, headers=None):
         """
         Configure virtualization for this bucket.
 
@@ -2272,7 +2273,7 @@ class Bucket(object):
             status = 'Disabled'
         body = self.VirtualizationBody % (status)
         response = self.connection.make_request('PUT', self.name, data=body,
-                query_args='virtualization')
+                query_args='virtualization', headers=headers)
         body = response.read()
         if response.status == 200:
             return True
@@ -2301,8 +2302,8 @@ class Bucket(object):
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
 
-    def get_tags(self):
-        response = self.get_xml_tags()
+    def get_tags(self, headers=None):
+        response = self.get_xml_tags(headers=headers)
         tags = Tags()
         h = handler.XmlHandler(tags, self)
         if not isinstance(response, bytes):
@@ -2310,10 +2311,10 @@ class Bucket(object):
         xml.sax.parseString(response, h)
         return tags
 
-    def get_xml_tags(self):
+    def get_xml_tags(self, headers=None):
         response = self.connection.make_request('GET', self.name,
                                                 query_args='tagging',
-                                                headers=None)
+                                                headers=headers)
         body = response.read()
         if response.status == 200:
             return body
