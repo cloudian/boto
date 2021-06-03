@@ -2577,8 +2577,8 @@ class Key(object):
                                                   response.reason,
                                                   response.read())
 
-    def get_tags(self):
-        response = self.get_xml_tags()
+    def get_tags(self, headers=None):
+        response = self.get_xml_tags(headers=headers)
         tags = Tags()
         h = handler.XmlHandler(tags, self)
         if not isinstance(response, bytes):
@@ -2586,13 +2586,13 @@ class Key(object):
         xml.sax.parseString(response, h)
         return tags
 
-    def get_xml_tags(self):
+    def get_xml_tags(self, headers=None):
         query_args = 'tagging'
         if self.version_id:
             query_args += '&versionId=%s' % self.version_id
         response = self.bucket.connection.make_request(
             'GET', self.bucket.name, self.name,
-             query_args=query_args, headers=None)
+             query_args=query_args, headers=headers)
         body = response.read()
         if response.status == 200:
             return body
