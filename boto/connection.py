@@ -1233,7 +1233,7 @@ class AWSQueryConnection(AWSAuthConnection):
         else:
             boto.log.error('%s %s' % (response.status, response.reason))
             boto.log.error('%s' % body)
-            raise self.ResponseError(response.status, response.reason, body)
+            return self.ResponseError(response.status, response.reason, body)
 
     def get_object(self, action, params, cls, path='/',
                    parent=None, verb='GET'):
