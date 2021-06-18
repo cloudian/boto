@@ -2453,7 +2453,7 @@ class Bucket(object):
                 response.status, response.reason, body)
 
     def get_bucket_objectlock_config(self, headers=None):
-        response = self.get_xml_bucket_objectlock_config()
+        response = self.get_xml_bucket_objectlock_config(headers=headers)
         olc = OLConfiguration()
         h = handler.XmlHandler(olc, self)
         if not isinstance(response, bytes):
