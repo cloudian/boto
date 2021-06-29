@@ -82,6 +82,7 @@ qsa_of_interest = ['acl', 'cors', 'defaultObjectAcl', 'location', 'logging',
                    'tagging', 'restore', 'replication', 'select', 'select-type',
                    'notification', 'encryption', 'object-lock', 'retention',
                    'legal-hold', 'inventory', 'ownershipControls',
+                   'publicAccessBlock', 'policyStatus',
                    # storageClass is a QSA for buckets in Google Cloud Storage.
                    # (StorageClass is associated to individual keys in S3, but
                    # having it listed here should cause no problems because

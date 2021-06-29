@@ -42,6 +42,7 @@ from boto.s3.crr import CRR
 from boto.s3.inventory import Inventory, InventoryConfiguration
 from boto.s3.tagging import Tags
 from boto.s3.olconfig import OLConfiguration
+from boto.s3.publicaccessblock import PublicAccessBlock
 from boto.s3.cors import CORSConfiguration
 from boto.s3.bucketlogging import BucketLogging
 from boto.s3 import website
@@ -2666,3 +2667,89 @@ class Bucket(object):
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
 
+    def put_bucket_public_access_block_config(self, pab, headers=None):
+        """
+        PUT Public Access Block configuration for this bucket.
+
+        :type pab: PublicAccessBlock
+        :param pab: Specifies the Public Access Block configuration for
+            an S3 bucket.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+        """
+
+        xml = pab.to_xml()
+        if headers is None:
+            headers = {}
+        md5 = boto.utils.compute_md5(StringIO(xml))
+        headers['Content-MD5'] = md5[1]
+        if not isinstance(xml, bytes):
+            xml = xml.encode('utf-8')
+        response = self.connection.make_request('PUT', self.name, data=xml,
+                                                query_args='publicAccessBlock',
+                                                headers=headers)
+        body = response.read()
+        if response.status == 200:
+            return body
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def get_bucket_public_access_block_config(self, headers=None):
+        """
+        GET Public Access Block configuration for this bucket.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+        """
+
+        response = self.connection.make_request('GET', self.name,
+                query_args='publicAccessBlock', headers=headers)
+        body = response.read()
+        if response.status == 200:
+            pab = PublicAccessBlock()
+            h = handler.XmlHandler(pab, self)
+            if not isinstance(body, bytes):
+                body = body.encode('utf-8')
+            xml.sax.parseString(body, h)
+            return pab
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def delete_bucket_public_access_block_config(self, headers=None):
+        """
+        Delete Pulic Access Block configuration for this bucket.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+        """
+
+        response = self.connection.make_request('DELETE', self.name,
+                                                query_args='publicAccessBlock',
+                                                headers=headers)
+        body = response.read()
+        if response.status == 204:
+            return True
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def get_bucket_policy_status(self, headers=None):
+        """
+        Get Bucket Policy Status for this bucket.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+        """
+
+        response = self.connection.make_request('GET', self.name,
+                                                query_args='policyStatus',
+                                                headers=headers)
+        body = response.read()
+        if response.status == 200:
+            return body
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
