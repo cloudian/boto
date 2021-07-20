@@ -90,11 +90,18 @@ class InventoryFilter(object):
     """
     def __init__(self, prefix=None):
         self.prefix = prefix
+
+    def __eq__(self, other):
+        if other is None or not isinstance(other, InventoryFilter): return False
+        return self.prefix == other.prefix
+
     def startElement(self, name, attrs, connection):
         return None
+
     def endElement(self, name, value, connection):
         if name == 'Prefix':
             self.prefix = value
+
     def to_xml(self):
         s = ''
         if self.prefix is not None:
@@ -112,6 +119,11 @@ class InventorySchedule(object):
     """
     def __init__(self, frequency=None):
         self.frequency = frequency
+
+    def __eq__(self, other):
+        if other is None or not isinstance(other, InventorySchedule): return False
+        return self.frequency == other.frequency
+
     def startElement(self, name, attrs, connection):
         return None
     def endElement(self, name, value, connection):
@@ -135,6 +147,11 @@ class KMS(object):
     """
     def __init__(self, keyid=None):
         self.keyid = keyid
+
+    def __eq__(self, other):
+        if other is None or not isinstance(other, KMS): return False
+        return self.keyid == other.keyid
+
     def startElement(self, name, attrs, connection):
         return None
     def endElement(self, name, value, connection):
@@ -165,6 +182,10 @@ class InventoryEncryption(object):
         else:
             self.kms = KMS()
         self.s3 = s3
+
+    def __eq__(self, other):
+        if other is None or not isinstance(other, InventoryEncryption): return False
+        return self.kms == other.kms and self.s3 == other.s3
 
     def startElement(self, name, attrs, connection):
         if name == 'SSE-KMS':
@@ -219,6 +240,14 @@ class S3BucketDestination(object):
         else:
             self.encryption = InventoryEncryption()
 
+    def __eq__(self, other):
+        if other is None or not isinstance(other, S3BucketDestination): return False
+        return (self.bname == other.bname and
+                self.account_id == other.account_id and
+                self.format == other.format and
+                self.prefix == other.prefix and
+                self.encryption == other.encryption)
+
     def startElement(self, name, attrs, connection):
         if name == 'Encryption':
             return self.encryption
@@ -264,6 +293,10 @@ class InventoryDestination(object):
             self.s3_bucket_destination = s3_bucket_destination
         else:
             self.s3_bucket_destination = S3BucketDestination()
+
+    def __eq__(self, other):
+        if other is None or not isinstance(other, InventoryDestination): return False
+        return self.s3_bucket_destination == other.s3_bucket_destination
 
     def startElement(self, name, attrs, connection):
         if name == 'S3BucketDestination':
@@ -315,6 +348,10 @@ class InventoryOptionalFields(list):
             self.append("ObjectLockLegalHoldStatus")
         if intelligent_tiering_access_tier is not None:
             self.append("IntelligentTieringAccessTier")
+
+    def __eq__(self, other):
+        if other is None or not isinstance(other, InventoryOptionalFields): return False
+        return self.sort() == other.sort()
 
     def startElement(self, name, attrs, connection):
         return None
@@ -382,6 +419,16 @@ class Inventory(object):
             self.optional_fields = optional_fields
         else:
             self.optional_fields = InventoryOptionalFields()
+
+    def __eq__(self, other):
+        if other is None or not isinstance(other, Inventory): return False
+        return (self.id == other.id and
+                self.is_enabled == other.is_enabled and
+                self.included_object_versions == other.included_object_versions and
+                self.filter == other.filter and
+                self.schedule == other.schedule and
+                self.destination == other.destination and
+                self.optional_fields == other.optional_fields)
 
     def startElement(self, name, attrs, connection):
         if name == 'Filter':
