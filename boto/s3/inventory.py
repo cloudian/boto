@@ -351,7 +351,7 @@ class InventoryOptionalFields(list):
 
     def __eq__(self, other):
         if other is None or not isinstance(other, InventoryOptionalFields): return False
-        return self.sort() == other.sort()
+        return sorted(self) == sorted(other)
 
     def startElement(self, name, attrs, connection):
         return None
