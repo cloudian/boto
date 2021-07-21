@@ -95,6 +95,9 @@ class InventoryFilter(object):
         if other is None or not isinstance(other, InventoryFilter): return False
         return self.prefix == other.prefix
 
+    def __repr__(self):
+        return self.to_xml()
+
     def startElement(self, name, attrs, connection):
         return None
 
@@ -124,6 +127,9 @@ class InventorySchedule(object):
         if other is None or not isinstance(other, InventorySchedule): return False
         return self.frequency == other.frequency
 
+    def __repr__(self):
+        return self.to_xml()
+
     def startElement(self, name, attrs, connection):
         return None
     def endElement(self, name, value, connection):
@@ -151,6 +157,9 @@ class KMS(object):
     def __eq__(self, other):
         if other is None or not isinstance(other, KMS): return False
         return self.keyid == other.keyid
+
+    def __repr__(self):
+        return self.to_xml()
 
     def startElement(self, name, attrs, connection):
         return None
@@ -186,6 +195,9 @@ class InventoryEncryption(object):
     def __eq__(self, other):
         if other is None or not isinstance(other, InventoryEncryption): return False
         return self.kms == other.kms and self.s3 == other.s3
+
+    def __repr__(self):
+        return self.to_xml()
 
     def startElement(self, name, attrs, connection):
         if name == 'SSE-KMS':
@@ -248,6 +260,9 @@ class S3BucketDestination(object):
                 self.prefix == other.prefix and
                 self.encryption == other.encryption)
 
+    def __repr__(self):
+        return self.to_xml()
+
     def startElement(self, name, attrs, connection):
         if name == 'Encryption':
             return self.encryption
@@ -297,6 +312,9 @@ class InventoryDestination(object):
     def __eq__(self, other):
         if other is None or not isinstance(other, InventoryDestination): return False
         return self.s3_bucket_destination == other.s3_bucket_destination
+
+    def __repr__(self):
+        return self.to_xml()
 
     def startElement(self, name, attrs, connection):
         if name == 'S3BucketDestination':
@@ -352,6 +370,9 @@ class InventoryOptionalFields(list):
     def __eq__(self, other):
         if other is None or not isinstance(other, InventoryOptionalFields): return False
         return sorted(self) == sorted(other)
+
+    def __repr__(self):
+        return self.to_xml()
 
     def startElement(self, name, attrs, connection):
         return None
@@ -429,6 +450,9 @@ class Inventory(object):
                 self.schedule == other.schedule and
                 self.destination == other.destination and
                 self.optional_fields == other.optional_fields)
+
+    def __repr__(self):
+        return self.to_xml()
 
     def startElement(self, name, attrs, connection):
         if name == 'Filter':
