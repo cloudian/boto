@@ -1722,7 +1722,7 @@ class IAMConnection(AWSQueryConnection):
         params = {}
         return self.get_response('GetCredentialReport', params)
 
-    def create_virtual_mfa_device(self, path, device_name):
+    def create_virtual_mfa_device(self, device_name, path='/'):
         """
         Creates a new virtual MFA device for the AWS account.
 
@@ -1742,6 +1742,56 @@ class IAMConnection(AWSQueryConnection):
             'VirtualMFADeviceName': device_name
         }
         return self.get_response('CreateVirtualMFADevice', params)
+
+    def delete_virtual_mfa_device(self, serial_number):
+        """
+        Deletes a virtual MFA device for the AWS account.
+        You must deactivate a user's virtual MFA device
+        before you can delete it.
+
+        :type serial_number: string
+        :param serial_number: The serial number which uniquely identifies
+            the MFA device. For virtual MFA devices, the serial number is
+            the same as the ARN.
+        """
+        params = {
+            'SerialNumber': serial_number
+        }
+        return self.get_response('DeleteVirtualMFADevice', params)
+
+    def get_all_virtual_mfa_devices(self, assignment_status=None, marker=None, max_items=None):
+        """
+        Lists the virtual MFA devices defined in the AWS account
+        by assignment status. If you do not specify an assignment status,
+        the operation returns a list of all virtual MFA devices.
+        Assignment status can be 'Assigned', 'Unassigned', or 'Any'.
+
+        :type assignment_status: string
+        :param assignment_status: The status (Unassigned or Assigned) of
+             the devices to list. If you do not specify an AssignmentStatus,
+             the operation defaults to Any, which lists both assigned and
+             unassigned virtual MFA devices.
+
+        :type marker: string
+        :param marker: Use this parameter only when paginating results
+             and only after you receive a response indicating that the results
+             are truncated. Set it to the value of the Marker element
+             in the response that you received to indicate where the next call
+             should start.
+
+        :type max_items: int
+        :param max_items: Use this only when paginating results to indicate
+            the maximum number of items you want in the response.
+        """
+        params = {}
+        if assignment_status:
+            params['AssignmentStatus'] = assignment_status
+        if marker:
+            params['Marker'] = marker
+        if max_items:
+            params['MaxItems'] = max_items
+        return self.get_response('ListVirtualMFADevices',
+                                 params, list_marker='VirtualMFADevices')
 
     #
     # IAM password policy
