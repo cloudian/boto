@@ -1722,7 +1722,7 @@ class IAMConnection(AWSQueryConnection):
         params = {}
         return self.get_response('GetCredentialReport', params)
 
-    def create_virtual_mfa_device(self, device_name, path='/'):
+    def create_virtual_mfa_device(self, path, device_name):
         """
         Creates a new virtual MFA device for the AWS account.
 
