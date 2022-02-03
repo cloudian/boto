@@ -1769,8 +1769,9 @@ class IAMConnection(AWSQueryConnection):
         :type assignment_status: string
         :param assignment_status: The status (Unassigned or Assigned) of
              the devices to list. If you do not specify an AssignmentStatus,
-             the operation defaults to Any, which lists both assigned and
-             unassigned virtual MFA devices.
+             the operation lists both assigned and unassigned virtual MFA
+             devices. You can also explicitly use 'Any' which returns
+             the same thing.
 
         :type marker: string
         :param marker: Use this parameter only when paginating results
