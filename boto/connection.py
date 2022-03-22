@@ -1007,8 +1007,10 @@ class AWSAuthConnection(object):
                         # detects the endpoint requires V4 Signatures.
                         # This code does the same thing.
                         body = response.read()
+                        # Python3 : body is <class 'bytes'> 
+                        # Python2 : body is str
                         if (body is not None and
-                            body.find('AWS4-HMAC-SHA256') != -1):
+                            body.decode('utf-8').find('AWS4-HMAC-SHA256') != -1):
                             msg = 'Attempting to re-send the request to '
                             msg += request.host
                             msg += ' with AWS V4 authentication. To avoid this '
