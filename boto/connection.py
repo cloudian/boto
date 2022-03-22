@@ -1007,33 +1007,28 @@ class AWSAuthConnection(object):
                         # detects the endpoint requires V4 Signatures.
                         # This code does the same thing.
                         body = response.read()
-                        if body is not None :
-                            # Python3 : body is <class 'bytes'> 
-                            # Python2 : body is str
-                            contain_aws4_hmac_sha256 = 0
-                            if six.PY3:
-                                contain_aws4_hmac_sha256 = body.decode('utf-8').find('AWS4-HMAC-SHA256')
-                            else:
-                                contain_aws4_hmac_sha256 = body.find('AWS4-HMAC-SHA256')
-                            if contain_aws4_hmac_sha256 != -1 :
-                                msg = 'Attempting to re-send the request to '
-                                msg += request.host
-                                msg += ' with AWS V4 authentication. To avoid this '
-                                msg += 'warning in the future, please use '
-                                msg += 'a region-specific endpoint to access '
-                                msg += 'buckets located in regions that require '
-                                msg += 'V4 signing.'
-                                print(msg)
-                                boto.log.debug(msg)
-                                self.use_sigv4 = True
-                                self._auth_handler = auth.get_auth_handler(
-                                                request.host,
-                                                config, self.provider,
-                                                self._required_auth_capability())
-                                connection = self.get_http_connection(request.host,
-                                                request.port, self.is_secure)
-                                response = None
-                                continue
+                        # Python3 : body is <class 'bytes'> 
+                        # Python2 : body is str
+                        if (body is not None and
+                            body.decode('utf-8').find('AWS4-HMAC-SHA256') != -1):
+                            msg = 'Attempting to re-send the request to '
+                            msg += request.host
+                            msg += ' with AWS V4 authentication. To avoid this '
+                            msg += 'warning in the future, please use '
+                            msg += 'a region-specific endpoint to access '
+                            msg += 'buckets located in regions that require '
+                            msg += 'V4 signing.'
+                            print(msg)
+                            boto.log.debug(msg)
+                            self.use_sigv4 = True
+                            self._auth_handler = auth.get_auth_handler(
+                                              request.host,
+                                              config, self.provider,
+                                              self._required_auth_capability())
+                            connection = self.get_http_connection(request.host,
+                                              request.port, self.is_secure)
+                            response = None
+                            continue
                     return response
                 else:
                     scheme, request.host, request.path, \
