@@ -225,7 +225,7 @@ class Bucket(object):
         response.read()
         # Allow any success status (2xx) - for example this lets us
         # support Range gets, which return status 206:
-        if response.status / 100 == 2:
+        if 200 <= response.status <= 299:
             k = self.key_class(self)
             provider = self.connection.provider
             k.metadata = boto.utils.get_aws_metadata(response.msg, provider)
