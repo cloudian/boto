@@ -101,7 +101,7 @@ class S3SelectData(object):
                 record += '\t'
                 record += '"' + self.keyL[num_field] + '"'
                 record += ':'
-                if num_field in self.fieldvals: # works only on python > 2.3 
+                if num_field in self.fieldvals: # works only on python > 2.3 and python 3.x
                     val = self.gen_field(valtype=self.fieldvals[num_field])
                 else:
                     val = self.gen_field()
@@ -112,7 +112,7 @@ class S3SelectData(object):
                     # header field
                     field = self.gen_key()
                 else:
-                    if num_field in self.fieldvals: # works only on python > 2.3 
+                    if num_field in self.fieldvals: # works only on python > 2.3 and python 3.x
                         field = self.gen_field(valtype=self.fieldvals[num_field])
                     else:
                         field = self.gen_field()
