@@ -166,10 +166,10 @@ class HmacAuthV1Handler(AuthHandler, HmacKeys):
         headers['Authorization'] = auth
 
     def sign_post_policy(self, host, post_policy, fields):
-        b64Policy = base64.b64encode(post_policy)
+        b64Policy = base64.b64encode(post_policy.encode('utf-8'))
         fields['AWSAccessKeyId'] = self._provider.access_key
-        fields['policy'] = b64Policy
-        fields['signature'] = self.sign_string(b64Policy)
+        fields['policy'] = b64Policy.decode('utf-8')
+        fields['signature'] = self.sign_string(b64Policy.decode('utf-8'))
 
 class HmacAuthV2Handler(AuthHandler, HmacKeys):
     """
@@ -804,7 +804,7 @@ class S3HmacAuthV4Handler(HmacAuthV4Handler, AuthHandler):
         # Finalize the policy
         jpolicy = json.dumps(policy)
         boto.log.debug('Final post policy: %s' % jpolicy)
-        b64Policy = base64.b64encode(jpolicy)
+        b64Policy = base64.b64encode(jpolicy.encode('utf-8')).decode('utf-8')
         fields['policy'] = b64Policy
 
         # Finally calculate the signature
@@ -822,11 +822,11 @@ class S3HmacAuthV4Handler(HmacAuthV4Handler, AuthHandler):
         for cond in o_conds:
             try:
                 # cond is a dictionary
-                if cond.has_key('x-amz-algorithm'):
+                if 'x-amz-algorithm' in cond:
                     continue
-                elif cond.has_key('x-amz-credential'):
+                elif 'x-amz-credential' in cond:
                     continue
-                elif cond.has_key('x-amz-date'):
+                elif 'x-amz-date' in cond:
                     continue
                 else:
                     n_conds.append(cond)
@@ -844,7 +844,7 @@ class S3HmacAuthV4Handler(HmacAuthV4Handler, AuthHandler):
         for name in ('AWSAccessKeyId', 'signature', 'policy',
                      'x-amz-date', 'x-amz-algorithm', 'x-amz-credential',
                      'x-amz-signature', ):
-            if fields.has_key(name):
+            if name in fields:
                 del fields[name]
 
     def presign(self, req, expires, iso_date=None):
