@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from random import choice, randint
+from boto.compat import six
 
 class S3SelectData(object):
     def __init__(self, type, nfields=10, nrecords=10, fd=',', rd='\n', qc='"', qec='"', hdr=None, fielddic={}):
@@ -21,7 +22,7 @@ class S3SelectData(object):
         self.qec = qec
         self.hdr = hdr
         self.fieldvals = {}      # fielddic => {"int":[0,1], "single": [2,3], "multi": [4,5], "string": [6,7]}
-        for vtype, posL in fielddic.iteritems():
+        for vtype, posL in six.iteritems(fielddic):
             for pos in posL:
                 self.fieldvals[pos] = vtype
         self.keyL = []
@@ -32,11 +33,12 @@ class S3SelectData(object):
 
     def choose_one_of(self, seq):
         return choice(seq)
+        
 
     def choose_count_of(self, seq, count):
         lseq = len(seq)
         choosen = []
-        for i in xrange(count):
+        for i in range(count):
             choosen.append(seq[randint(0,lseq-1)])
         if isinstance(seq, str):
             return ''.join(choosen)
@@ -99,7 +101,7 @@ class S3SelectData(object):
                 record += '\t'
                 record += '"' + self.keyL[num_field] + '"'
                 record += ':'
-                if self.fieldvals.has_key(num_field):
+                if num_field in self.fieldvals: # works only on python > 2.3 and python 3.x
                     val = self.gen_field(valtype=self.fieldvals[num_field])
                 else:
                     val = self.gen_field()
@@ -110,7 +112,7 @@ class S3SelectData(object):
                     # header field
                     field = self.gen_key()
                 else:
-                    if self.fieldvals.has_key(num_field):
+                    if num_field in self.fieldvals: # works only on python > 2.3 and python 3.x
                         field = self.gen_field(valtype=self.fieldvals[num_field])
                     else:
                         field = self.gen_field()
@@ -126,6 +128,13 @@ class S3SelectData(object):
     def gen_data(self, fp):
         for num_record in range(self.nrecords):
             record = self.gen_record(num_record)
-            fp.write(record.encode('utf-8'))
-            fp.write(self.rd)
-
+            if six.PY2:
+                fp.write(record.encode('utf-8'))
+                fp.write(self.rd)
+            else:                
+                if fp.fileno() == 1:  # if stdout
+                    fp.write(record) 
+                    fp.write(self.rd)
+                else:
+                    fp.write(record.encode('utf-8')) 
+                    fp.write(self.rd.encode('utf-8'))
