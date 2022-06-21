@@ -897,7 +897,7 @@ class Key(object):
                     chunk = fp.read(need)
 
                 # Send the multipart bottom which follows the file data
-                http_conn.send(bottom.encode())
+                http_conn.send(bottom.encode('utf-8'))
 
                 self.size = data_len
 
