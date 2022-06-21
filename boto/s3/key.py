@@ -1210,17 +1210,17 @@ class Key(object):
                         chunk_hdr = streaming_auth.chunk_header(request, chunk)
                         if chunked_transfer:
                             cte_chunk_len = chunk_len + streaming_auth.chunk_extra_size(chunk_len)
-                            http_conn.send('%x\r\n' % cte_chunk_len)
-                            http_conn.send('%s%s\r\n' % (chunk_hdr, chunk))
-                            http_conn.send('\r\n')
+                            http_conn.send(('%x\r\n' % cte_chunk_len).encode('utf-8'))
+                            http_conn.send(('%s%s\r\n' % (chunk_hdr, chunk.decode('utf-8'))).encode('utf-8'))
+                            http_conn.send('\r\n'.encode('utf-8'))
                         else:
-                            http_conn.send('%s' % chunk_hdr)
+                            http_conn.send(chunk_hdr.encode('utf-8'))
                             http_conn.send(chunk)
-                            http_conn.send('\r\n')
+                            http_conn.send('\r\n'.encode('utf-8'))
                     elif chunked_transfer:
-                        http_conn.send('%x\r\n' % chunk_len)
+                        http_conn.send(('%x\r\n' % chunk_len).encode('utf-8'))
                         http_conn.send(chunk)
-                        http_conn.send('\r\n')
+                        http_conn.send('\r\n'.encode('utf-8'))
                     else:
                         http_conn.send(chunk)
 
@@ -1256,18 +1256,18 @@ class Key(object):
 
                 if streaming_auth is not None:
                     # Need to write the final empty aws-chunk
-                    chunk_hdr = streaming_auth.chunk_header(request, '')
+                    chunk_hdr = streaming_auth.chunk_header(request, ''.encode('utf-8'))
                     if chunked_transfer:
                         cte_chunk_len = streaming_auth.chunk_extra_size(0)
-                        http_conn.send('%x\r\n' % cte_chunk_len)
-                        http_conn.send('%s\r\n' % chunk_hdr)
-                        http_conn.send('\r\n')
+                        http_conn.send(('%x\r\n' % cte_chunk_len).encode('utf-8'))
+                        http_conn.send(('%s\r\n' % chunk_hdr).encode('utf-8'))
+                        http_conn.send('\r\n'.encode('utf-8'))
                     else:
-                        http_conn.send('%s\r\n' % chunk_hdr)
+                        http_conn.send(('%s\r\n' % chunk_hdr).encode())
 
                 if chunked_transfer:
-                    http_conn.send('0\r\n')
-                    http_conn.send('\r\n')
+                    http_conn.send('0\r\n'.encode('utf-8'))
+                    http_conn.send('\r\n'.encode('utf-8'))
 
                 self.size = data_len
 
@@ -1387,7 +1387,7 @@ class Key(object):
                 if streaming == 1:
                     # Stream using Content-Length
                     cl = self.size
-                    full = self.size / BufferSize
+                    full = self.size // BufferSize
                     cl += full * streaming_auth.chunk_extra_size(BufferSize)
                     partial = self.size % BufferSize
                     if partial > 0:

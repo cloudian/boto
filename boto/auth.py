@@ -738,7 +738,7 @@ class S3HmacAuthV4Handler(HmacAuthV4Handler, AuthHandler):
         sts.append(http_request.headers['X-Amz-Date'])
         sts.append(self.credential_scope(http_request))
         sts.append(http_request.sigv4['signature'])
-        sts.append(sha256('').hexdigest())
+        sts.append(sha256(''.encode('utf-8')).hexdigest())
         sts.append(sha256(chunk).hexdigest())
         return '\n'.join(sts)
 
