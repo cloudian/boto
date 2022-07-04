@@ -845,11 +845,11 @@ class Key(object):
               skips['skip_accept_encoding'] = 1
             http_conn.putrequest(method, path, **skips)
             # It's hard to skip basic authorization, so just delete the headers
-            if headers.has_key('Authorization'):
+            if 'Authorization' in headers:
                 del headers['Authorization']
-            if headers.has_key('x-amz-content-sha256'):
+            if 'x-amz-content-sha256' in headers:
                 del headers['x-amz-content-sha256']
-            if headers.has_key('X-Amz-Date'):
+            if 'X-Amz-Date' in headers:
                 del headers['X-Amz-Date']
             for key in headers:
                 http_conn.putheader(key, headers[key])
@@ -897,7 +897,7 @@ class Key(object):
                     chunk = fp.read(need)
 
                 # Send the multipart bottom which follows the file data
-                http_conn.send(bottom)
+                http_conn.send(bottom.encode('utf-8'))
 
                 self.size = data_len
 
@@ -1000,7 +1000,7 @@ class Key(object):
         conds = policy['conditions']
         for cond in conds:
             try:
-                if cond.has_key(name):
+                if name in cond:
                     # nothing to add
                     return post_policy
             except:
@@ -1017,12 +1017,12 @@ class Key(object):
 
     def form_data(self, fields, boundary):
         # key/file can be overriden in fields for test purposes
-        if fields.has_key('Key'):
+        if 'Key' in fields:
             key = fields['Key']
             del fields['Key']
         else:
             key = self.name
-        if fields.has_key('file'):
+        if 'file' in fields:
             filename = fields['file']
             del fields['file']
         else:
@@ -1210,17 +1210,17 @@ class Key(object):
                         chunk_hdr = streaming_auth.chunk_header(request, chunk)
                         if chunked_transfer:
                             cte_chunk_len = chunk_len + streaming_auth.chunk_extra_size(chunk_len)
-                            http_conn.send('%x\r\n' % cte_chunk_len)
-                            http_conn.send('%s%s\r\n' % (chunk_hdr, chunk))
-                            http_conn.send('\r\n')
+                            http_conn.send(('%x\r\n' % cte_chunk_len).encode('utf-8'))
+                            http_conn.send(('%s%s\r\n' % (chunk_hdr, chunk.decode('utf-8'))).encode('utf-8'))
+                            http_conn.send('\r\n'.encode('utf-8'))
                         else:
-                            http_conn.send('%s' % chunk_hdr)
+                            http_conn.send(chunk_hdr.encode('utf-8'))
                             http_conn.send(chunk)
-                            http_conn.send('\r\n')
+                            http_conn.send('\r\n'.encode('utf-8'))
                     elif chunked_transfer:
-                        http_conn.send('%x\r\n' % chunk_len)
+                        http_conn.send(('%x\r\n' % chunk_len).encode('utf-8'))
                         http_conn.send(chunk)
-                        http_conn.send('\r\n')
+                        http_conn.send('\r\n'.encode('utf-8'))
                     else:
                         http_conn.send(chunk)
 
@@ -1256,18 +1256,18 @@ class Key(object):
 
                 if streaming_auth is not None:
                     # Need to write the final empty aws-chunk
-                    chunk_hdr = streaming_auth.chunk_header(request, '')
+                    chunk_hdr = streaming_auth.chunk_header(request, ''.encode('utf-8'))
                     if chunked_transfer:
                         cte_chunk_len = streaming_auth.chunk_extra_size(0)
-                        http_conn.send('%x\r\n' % cte_chunk_len)
-                        http_conn.send('%s\r\n' % chunk_hdr)
-                        http_conn.send('\r\n')
+                        http_conn.send(('%x\r\n' % cte_chunk_len).encode('utf-8'))
+                        http_conn.send(('%s\r\n' % chunk_hdr).encode('utf-8'))
+                        http_conn.send('\r\n'.encode('utf-8'))
                     else:
-                        http_conn.send('%s\r\n' % chunk_hdr)
+                        http_conn.send(('%s\r\n' % chunk_hdr).encode())
 
                 if chunked_transfer:
-                    http_conn.send('0\r\n')
-                    http_conn.send('\r\n')
+                    http_conn.send('0\r\n'.encode('utf-8'))
+                    http_conn.send('\r\n'.encode('utf-8'))
 
                 self.size = data_len
 
@@ -1387,7 +1387,7 @@ class Key(object):
                 if streaming == 1:
                     # Stream using Content-Length
                     cl = self.size
-                    full = self.size / BufferSize
+                    full = self.size // BufferSize
                     cl += full * streaming_auth.chunk_extra_size(BufferSize)
                     partial = self.size % BufferSize
                     if partial > 0:
@@ -1995,7 +1995,7 @@ class Key(object):
             fields[provider.server_side_encryption_header] = encrypt_key
             decode_json_data = json.loads(post_policy)
             decode_json_data['conditions'].append(('starts-with', '$%s' % provider.server_side_encryption_header, ''))
-            post_policy = json.dumps(decode_json_data)
+            post_policy = json.dumps(decode_json_data).encode('utf-8')
         if reduced_redundancy:
             self.storage_class = 'REDUCED_REDUNDANCY'
             if provider.storage_class_header:
