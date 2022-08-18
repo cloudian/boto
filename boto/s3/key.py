@@ -2530,7 +2530,8 @@ class Key(object):
                             headers=headers)
 
     def select_object_content(self, data, headers=None):
-        md5 = compute_md5(BytesIO(data))
+        
+        md5 = compute_md5(BytesIO(data.encode("utf-8")))
         headers = headers or {}
         headers['Content-MD5'] = md5[1]
         qargs = 'select&select-type=2'
@@ -2561,7 +2562,7 @@ class Key(object):
 
         """
         data = self.RestoreBody % days
-        md5 = compute_md5(BytesIO(data))
+        md5 = compute_md5(BytesIO(data.encode("utf-8")))
         headers = headers or {}
         headers['Content-MD5'] = md5[1]
         qargs = 'restore'
@@ -2646,7 +2647,7 @@ class Key(object):
             data = self.RetentionEmptyBody
         else:
             data = self.RetentionBody % (object_lock_mode, object_lock_retain_until_date)
-        md5 = compute_md5(BytesIO(data))
+        md5 = compute_md5(BytesIO(data.encode("utf-8")))
         headers = headers or {}
         headers['Content-MD5'] = md5[1]
         if bypass_governance_retention is not None:
@@ -2682,7 +2683,7 @@ class Key(object):
 
     def set_legal_hold(self, object_lock_legal_hold, version_id=None, headers=None):
         data = self.LegalHoldBody % object_lock_legal_hold
-        md5 = compute_md5(BytesIO(data))
+        md5 = compute_md5(BytesIO(data.encode("utf-8")))
         headers = headers or {}
         headers['Content-MD5'] = md5[1]
         qargs = 'legal-hold'
