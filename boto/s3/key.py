@@ -2646,7 +2646,7 @@ class Key(object):
             data = self.RetentionEmptyBody
         else:
             data = self.RetentionBody % (object_lock_mode, object_lock_retain_until_date)
-        md5 = compute_md5(BytesIO(data))
+        md5 = compute_md5(BytesIO(data.encode('utf-8')))
         headers = headers or {}
         headers['Content-MD5'] = md5[1]
         if bypass_governance_retention is not None:
