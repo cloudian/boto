@@ -2530,7 +2530,7 @@ class Key(object):
                             headers=headers)
 
     def select_object_content(self, data, headers=None):
-        md5 = compute_md5(BytesIO(data.encode('utf-8')))
+        md5 = compute_md5(BytesIO(data))
         headers = headers or {}
         headers['Content-MD5'] = md5[1]
         qargs = 'select&select-type=2'
