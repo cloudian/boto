@@ -2281,6 +2281,57 @@ class IAMConnection(AWSQueryConnection):
             params,
             list_marker='AttachedPolicies')
 
+    def simulate_principal_policy(self, policy_source_arn, action_names,
+                                  resource_arns=[], marker=None,
+                                  max_items=None):
+        """
+        Simulate Principal Policy.
+
+        :type policy_source_arn: string
+        :param policy_source_arn: The ARN of a user, group, or role whose
+            policies you want to include in the simulation
+
+        :type action_names: list
+        :param action_names: A list of names of API operations to
+            evaluate in the simulation
+
+        :type resource_arns: list
+        :param resource_arns: A list of ARNs of AWS resources to
+            include in the simulation
+
+        :type marker: string
+        :param marker: Use this parameter only when paginating results
+            and only after you receive a response indicating that the results
+            are truncated. Set it to the value of the Marker element in
+            the response that you received to indicate where the next call
+            should start.
+
+        :type max_items: int
+        :param max_items: Use this only when paginating results to indicate
+            the maximum number of items you want in the response.
+        """
+
+        params = {'PolicySourceArn': policy_source_arn}
+        i = 1
+        for action_name in action_names:
+            action_member = "ActionNames.member.%d" % i
+            params[action_member] = action_name
+            i += 1
+        i = 1
+        for resource_arn in resource_arns:
+            resource_member = "ResourceArns.member.%d" % i
+            params[resource_member] = resource_arn
+            i += 1
+        if marker is not None:
+            params['Marker'] = marker
+        if max_items is not None:
+            params['MaxItems'] = max_items
+        return self.get_response('SimulatePrincipalPolicy', params,
+                                 list_marker=('EvaluationResults',
+                                              'MatchedStatements',
+                                              'MissingContextValues',
+                                              'ResourceSpecificResults'))
+
     def get_cloudian_bill(self, period, userid=None):
         params = {'BillingPeriod': period}
         if userid is not None:
