@@ -86,6 +86,23 @@ class FilterSet(object):
         </Rule>
     </LifecycleConfiguration>
 
+    - Specifying a filter based on prefix and object size
+
+    <LifecycleConfiguration>
+        <Rule>
+            <Filter>
+              <And>
+                 <Prefix>key-prefix</Prefix>
+                 <ObjectSizeGreaterThan>long</ObjectSizeGreaterThan>
+                 <ObjectSizeLessThan>long</ObjectSizeLessThan>
+                  ...
+              </And>
+            </Filter>
+            <Status>Enabled</Status>
+            transition/expiration actions.
+        </Rule>
+    </LifecycleConfiguration>
+
     - Specifying an empty filter, in which case the rule applies to all objects in the bucket.
 
     <LifecycleConfiguration>
@@ -98,9 +115,11 @@ class FilterSet(object):
     </LifecycleConfiguration>
     """
 
-    def __init__(self, prefix='', tag_list=None):
+    def __init__(self, prefix='', tag_list=None, size_gt=None, size_lt=None):
         self.prefix = prefix
         self.tag_list = tag_list or []
+        self.size_gt = size_gt
+        self.size_lt = size_lt
 
     def startElement(self, name, attrs, connection):
         if name == 'Tag':
@@ -112,6 +131,10 @@ class FilterSet(object):
     def endElement(self, name, value, connection):
         if name == 'Prefix':
             self.prefix = value
+        elif name == 'ObjectSizeGreaterThan':
+            self.size_gt = value
+        elif name == 'ObjectSizeLessThan':
+            self.size_lt = value
         else:
             setattr(self, name, value)
 
@@ -122,16 +145,33 @@ class FilterSet(object):
     def set_prefix(self, prefix):
         self.prefix = prefix
 
+    def set_size_gt(self, size_gt):
+        self.size_gt = size_gt
+
+    def set_size_lt(self, size_lt):
+        self.size_lt = size_lt
+
     def to_xml(self):
         and_tag = False
-        if (len(self.tag_list) > 1 or
-            (self.prefix != '' and len(self.tag_list) > 0)):
+        filter_count = 0
+        if self.prefix != '':
+            filter_count += 1
+        if self.size_gt:
+            filter_count += 1
+        if self.size_lt:
+            filter_count += 1
+        filter_count += len(self.tag_list)
+        if filter_count > 1:
             and_tag = True
         xml = ''
         if and_tag:
             xml += '<And>'
         if self.prefix != '':
             xml += '<Prefix>%s</Prefix>' % self.prefix
+        if self.size_gt:
+            xml += '<ObjectSizeGreaterThan>%s</ObjectSizeGreaterThan>' % self.size_gt
+        if self.size_lt:
+            xml += '<ObjectSizeLessThan>%s</ObjectSizeLessThan>' % self.size_lt
         for tag in self.tag_list:
             xml += tag.to_xml()
         if and_tag:
@@ -154,7 +194,8 @@ class Rule(object):
                   If True, <Filter> element is used.
 
     :ivar filter_set: An instance of `FilterSet`. This indicates
-         a filter based on both the key prefix and one or more tags.
+         a filter based on the key prefix, object size and one or more
+         tags.
 
     :ivar status: If 'Enabled', the rule is currently being applied.
         If 'Disabled', the rule is not currently being applied.
@@ -532,8 +573,8 @@ class Lifecycle(list):
             be added in lifecycle xml rule.
 
         :type filter_set: FilterSet
-        :iparam filter_set: Indicates a filter based on both the key prefix
-            and one or more tags.
+        :iparam filter_set: Indicates a filter based on the key prefix,
+            object size and one or more tags.
 
         :type status: str
         :param status: If 'Enabled', the rule is currently being applied.
