@@ -116,6 +116,24 @@ class FilterSet(object):
     """
 
     def __init__(self, prefix='', tag_list=None, size_gt=None, size_lt=None):
+        """
+        The Filter is used to identify objects that a Lifecycle Rule applies to.
+
+        :type prefix: string
+        :param prefix: prefix identifying one or more objects to which the rule
+            applies.
+
+        :type tag_list: list
+        :param tag_list: list of Tag() that must exist in the object's tag set
+            in order for the rule to apply.
+
+        :type size_gt: int
+        :param size_gt: Minimum object size to which the rule applies.
+
+        :type size_lt: int
+        :param size_lt: Maximum object size to which the rule applies.
+        """
+
         self.prefix = prefix
         self.tag_list = tag_list or []
         self.size_gt = size_gt
@@ -132,9 +150,9 @@ class FilterSet(object):
         if name == 'Prefix':
             self.prefix = value
         elif name == 'ObjectSizeGreaterThan':
-            self.size_gt = value
+            self.size_gt = int(value)
         elif name == 'ObjectSizeLessThan':
-            self.size_lt = value
+            self.size_lt = int(value)
         else:
             setattr(self, name, value)
 
@@ -156,9 +174,9 @@ class FilterSet(object):
         filter_count = 0
         if self.prefix != '':
             filter_count += 1
-        if self.size_gt:
+        if self.size_gt is not None:
             filter_count += 1
-        if self.size_lt:
+        if self.size_lt is not None:
             filter_count += 1
         filter_count += len(self.tag_list)
         if filter_count > 1:
@@ -168,10 +186,10 @@ class FilterSet(object):
             xml += '<And>'
         if self.prefix != '':
             xml += '<Prefix>%s</Prefix>' % self.prefix
-        if self.size_gt:
-            xml += '<ObjectSizeGreaterThan>%s</ObjectSizeGreaterThan>' % self.size_gt
-        if self.size_lt:
-            xml += '<ObjectSizeLessThan>%s</ObjectSizeLessThan>' % self.size_lt
+        if self.size_gt is not None:
+            xml += '<ObjectSizeGreaterThan>%d</ObjectSizeGreaterThan>' % self.size_gt
+        if self.size_lt is not None:
+            xml += '<ObjectSizeLessThan>%d</ObjectSizeLessThan>' % self.size_lt
         for tag in self.tag_list:
             xml += tag.to_xml()
         if and_tag:
