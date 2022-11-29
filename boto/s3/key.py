@@ -1180,6 +1180,9 @@ class Key(object):
             need = BufferSize
             if bytes_togo and bytes_togo < BufferSize:
                 need = bytes_togo
+            
+            if bytes_togo == 0:
+                need = 0
             chunk = fp.read(need)
             if streaming_auth is not None:
                 # aws content-length calculations, and minimum chunk size
