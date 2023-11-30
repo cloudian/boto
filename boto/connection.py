@@ -382,11 +382,11 @@ class HTTPRequest(object):
              path.find('credential') != -1) and
             path.find('expires=') != -1 and path.find('signature=') != -1):
             # Remove Authorization header when doing query auth
-            if self.headers.has_key('Authorization'):
+            if 'Authorization' in self.headers:
                 del self.headers['Authorization']
-            if self.headers.has_key('x-amz-content-sha256'):
+            if 'x-amz-content-sha256' in self.headers:
                 del self.headers['x-amz-content-sha256']
-            if self.headers.has_key('X-Amz-Date'):
+            if 'X-Amz-Date' in self.headers:
                 del self.headers['X-Amz-Date']
         else:
             # Or just re-Authorize the request
