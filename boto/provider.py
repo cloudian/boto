@@ -72,6 +72,14 @@ OBJECT_LOCK_RETAIN_UNTIL_DATE_HEADER_KEY = 'object-lock-retain-until-date-header
 OBJECT_LOCK_LEGAL_HOLD_HEADER_KEY = 'object-lock-legal-hold-header'
 BYPASS_GOVERNANCE_RETENTION_HEADER_KEY = 'bypass-governance-retention-header'
 
+SDK_CHECKSUM_ALGORITHM_HEADER_KEY = 'sdk-checksum-algorithm-header'
+CHECKSUM_ALGORITHM_HEADER_KEY = 'checksum-algorithm-header'
+CHECKSUM_CRC32_HEADER_KEY = 'checksum-crc32-header'
+CHECKSUM_CRC32C_HEADER_KEY = 'checksum-crc32c-header'
+CHECKSUM_SHA1_HEADER_KEY = 'checksum-sha1-header'
+CHECKSUM_SHA256_HEADER_KEY = 'checksum-sha256-header'
+CHECKSUM_MODE_HEADER_KEY = 'checksum-mode-header'
+
 STORAGE_COPY_ERROR = 'StorageCopyError'
 STORAGE_CREATE_ERROR = 'StorageCreateError'
 STORAGE_DATA_ERROR = 'StorageDataError'
@@ -153,6 +161,13 @@ class Provider(object):
             OBJECT_LOCK_RETAIN_UNTIL_DATE_HEADER_KEY: AWS_HEADER_PREFIX + 'object-lock-retain-until-date',
             OBJECT_LOCK_LEGAL_HOLD_HEADER_KEY: AWS_HEADER_PREFIX + 'object-lock-legal-hold',
             BYPASS_GOVERNANCE_RETENTION_HEADER_KEY: AWS_HEADER_PREFIX + 'bypass-governance-retention',
+            SDK_CHECKSUM_ALGORITHM_HEADER_KEY: AWS_HEADER_PREFIX + 'sdk-checksum-algorithm',
+            CHECKSUM_ALGORITHM_HEADER_KEY: AWS_HEADER_PREFIX + 'checksum-algorithm',
+            CHECKSUM_CRC32_HEADER_KEY: AWS_HEADER_PREFIX + 'checksum-crc32',
+            CHECKSUM_CRC32C_HEADER_KEY: AWS_HEADER_PREFIX + 'checksum-crc32c',
+            CHECKSUM_SHA1_HEADER_KEY: AWS_HEADER_PREFIX + 'checksum-sha1',
+            CHECKSUM_SHA256_HEADER_KEY: AWS_HEADER_PREFIX + 'checksum-sha256',
+            CHECKSUM_MODE_HEADER_KEY: AWS_HEADER_PREFIX + 'checksum-mode',
         },
         'google': {
             HEADER_PREFIX_KEY: GOOG_HEADER_PREFIX,
@@ -184,6 +199,13 @@ class Provider(object):
             OBJECT_LOCK_RETAIN_UNTIL_DATE_HEADER_KEY: None,
             OBJECT_LOCK_LEGAL_HOLD_HEADER_KEY: None,
             BYPASS_GOVERNANCE_RETENTION_HEADER_KEY: None,
+            SDK_CHECKSUM_ALGORITHM_HEADER_KEY: None,
+            CHECKSUM_ALGORITHM_HEADER_KEY: None,
+            CHECKSUM_CRC32_HEADER_KEY: None,
+            CHECKSUM_CRC32C_HEADER_KEY: None,
+            CHECKSUM_SHA1_HEADER_KEY: None,
+            CHECKSUM_SHA256_HEADER_KEY: None,
+            CHECKSUM_MODE_HEADER_KEY: None,
         }
     }
 
@@ -497,6 +519,13 @@ class Provider(object):
         self.object_lock_retain_until_date_header = header_info_map[OBJECT_LOCK_RETAIN_UNTIL_DATE_HEADER_KEY]
         self.object_lock_legal_hold_header = header_info_map[OBJECT_LOCK_LEGAL_HOLD_HEADER_KEY]
         self.bypass_governance_retention_header = header_info_map[BYPASS_GOVERNANCE_RETENTION_HEADER_KEY]
+        self.sdk_checksum_algorithm_header = header_info_map[SDK_CHECKSUM_ALGORITHM_HEADER_KEY]
+        self.checksum_algorithm_header = header_info_map[CHECKSUM_ALGORITHM_HEADER_KEY]
+        self.checksum_crc32_header = header_info_map[CHECKSUM_CRC32_HEADER_KEY]
+        self.checksum_crc32c_header = header_info_map[CHECKSUM_CRC32C_HEADER_KEY]
+        self.checksum_sha1_header = header_info_map[CHECKSUM_SHA1_HEADER_KEY]
+        self.checksum_sha256_header = header_info_map[CHECKSUM_SHA256_HEADER_KEY]
+        self.checksum_mode_header = header_info_map[CHECKSUM_MODE_HEADER_KEY]
 
     def configure_errors(self):
         error_map = self.ErrorMap[self.name]

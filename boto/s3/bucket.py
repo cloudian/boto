@@ -162,7 +162,8 @@ class Bucket(object):
         return self.get_key(key_name, headers=headers)
 
     def get_key(self, key_name, headers=None, version_id=None,
-                partnum=None, response_headers=None, validate=True):
+                partnum=None, checksum_mode=None,
+                response_headers=None, validate=True):
         """
         Check to see if a particular key exists within the bucket.  This
         method uses a HEAD request to check for the existence of the key.
@@ -180,6 +181,9 @@ class Bucket(object):
         :param partnum:
         :type partnum: string
 
+        :param checksum_mode:
+        :type checksum_mode: string
+
         :param response_headers: A dictionary containing HTTP
             headers/values that will override any headers associated
             with the stored object in the response.  See
@@ -194,6 +198,8 @@ class Bucket(object):
         :rtype: :class:`boto.s3.key.Key`
         :returns: A Key object from this bucket.
         """
+        provider = self.connection.provider
+        headers = headers or {}
         if validate is False:
             if headers or version_id or response_headers:
                 raise BotoClientError(
@@ -210,6 +216,9 @@ class Bucket(object):
             query_args_l.append('versionId=%s' % version_id)
         if partnum:
             query_args_l.append('partNumber=%s' % partnum)
+        if checksum_mode is not None and checksum_mode.upper() == 'ENABLED':
+            headers[provider.checksum_mode_header] = checksum_mode
+
         if response_headers:
             for rk, rv in six.iteritems(response_headers):
                 query_args_l.append('%s=%s' % (rk, urllib.parse.quote(rv)))
@@ -250,6 +259,7 @@ class Bucket(object):
             k.handle_tagging_count_headers(response)
             k.handle_mp_parts_count_headers(response)
             k.handle_object_lock_headers(response)
+            k.handle_checksum_headers(response)
             k.handle_addl_headers(response.getheaders())
             return k, response
         else:
@@ -973,6 +983,7 @@ class Bucket(object):
                  object_lock_mode=None,
                  object_lock_retain_until_date=None,
                  object_lock_legal_hold=None,
+                 checksum=None,
                  policy=None):
         """
         Create a new key in the bucket by copying another existing key.
@@ -1037,6 +1048,10 @@ class Bucket(object):
         :param object_lock_legal_hold: ON|OFF. The Legal Hold status that you
             want to apply to the specified object.
 
+        :type checksum: string
+        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to create
+            the checksum for the object.
+
         :type policy: :class:`boto.s3.acl.CannedACLStrings`
         :param policy: A canned ACL policy that will be applied instead
                        of the default to the new key (once completed) in S3.
@@ -1077,6 +1092,9 @@ class Bucket(object):
             headers[provider.object_lock_retain_until_date_header] = object_lock_retain_until_date
         if object_lock_legal_hold is not None:
             headers[provider.object_lock_legal_hold_header] = object_lock_legal_hold
+        if checksum is not None:
+            # "x-amz-checksum-algorithm" header: CRC32|CRC32C|SHA1|SHA256
+            headers[provider.checksum_algorithm_header] = checksum
         response = self.connection.make_request('PUT', self.name, new_key_name,
                                                 headers=headers,
                                                 query_args=query_args)
@@ -2102,7 +2120,8 @@ class Bucket(object):
                                   policy=None,
                                   object_lock_mode=None,
                                   object_lock_retain_until_date=None,
-                                  object_lock_legal_hold=None):
+                                  object_lock_legal_hold=None,
+                                  checksum=None):
         """
         Start a multipart upload operation.
 
@@ -2158,6 +2177,9 @@ class Bucket(object):
         :param object_lock_legal_hold: ON|OFF. The Legal Hold status that you
             want to apply to the specified object.
 
+        :type checksum: string
+        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to create
+            the checksum for the object.
         """
         query_args = 'uploads'
         provider = self.connection.provider
@@ -2183,6 +2205,8 @@ class Bucket(object):
             headers[provider.object_lock_retain_until_date_header] = object_lock_retain_until_date
         if object_lock_legal_hold is not None:
             headers[provider.object_lock_legal_hold_header] = object_lock_legal_hold
+        if checksum is not None:
+            headers[provider.checksum_algorithm_header] = checksum
         response = self.connection.make_request('POST', self.name, key_name,
                                                 query_args=query_args,
                                                 headers=headers)
@@ -2194,6 +2218,13 @@ class Bucket(object):
             if not isinstance(body, bytes):
                 body = body.encode('utf-8')
             xml.sax.parseString(body, h)
+            # Use a dummy key to parse checksum_algorithm
+            # response header for checksum_algorithm and
+            # then explicitly set the initiated MPU object
+            # values from key.
+            k = self.key_class(self)
+            k.handle_checksum_headers(response)
+            resp.checksum_algorithm = k.checksum_algorithm
             return resp
         else:
             raise self.connection.provider.storage_response_error(
