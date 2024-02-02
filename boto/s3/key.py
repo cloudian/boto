@@ -1039,6 +1039,7 @@ class Key(object):
             retry_handler=retry_handler
         )
         self.handle_version_headers(resp, force=True)
+        self.handle_checksum_headers(resp)
         self.handle_addl_headers(resp.getheaders())
 
     def add_post_policy(self, post_policy, name, value):
@@ -2019,7 +2020,8 @@ class Key(object):
 
     def post_contents_from_file(self, fp, headers=None, post_policy=None,
                                 fields={}, policy=None,
-                                reduced_redundancy=False, encrypt_key=None):
+                                reduced_redundancy=False, encrypt_key=None,
+                                checksum=None):
         """
         Store an object in S3 using the name of the Key object
         as the key in S3 and the contents of the file pointed to
@@ -2060,6 +2062,10 @@ class Key(object):
             server-side by S3 and will be stored in an encrypted form
             while at rest in S3.
 
+        :type checksum: string
+        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to create
+            the checksum for the object.
+
         :rtype: int
         :return: The number of bytes written to the key.
         """
@@ -2076,6 +2082,29 @@ class Key(object):
             self.storage_class = 'REDUCED_REDUNDANCY'
             if provider.storage_class_header:
                 fields[provider.storage_class_header] = self.storage_class
+        if checksum is not None:
+            # "x-amz-sdk-checksum-algorithm" field: CRC32|CRC32C|SHA1|SHA256
+            fields[provider.sdk_checksum_algorithm_header] = checksum
+            decode_json_data = json.loads(post_policy)
+            decode_json_data['conditions'].append(('starts-with', '$%s' % provider.sdk_checksum_algorithm_header, ''))
+            # calculate based on the algorithm
+            checksum_lower = checksum.lower()
+            if checksum_lower in ['crc32', 'crc32c', 'sha1', 'sha256']:
+                calculated_checksum = cal_checksum(fp, -1, checksum_lower)
+                if checksum_lower == 'crc32':
+                    fields[provider.checksum_crc32_header] = calculated_checksum
+                    decode_json_data['conditions'].append(('starts-with', '$%s' % provider.checksum_crc32_header, ''))
+                elif checksum_lower == 'crc32c':
+                    fields[provider.checksum_crc32c_header] = calculated_checksum
+                    decode_json_data['conditions'].append(('starts-with', '$%s' % provider.checksum_crc32c_header, ''))
+                elif checksum_lower == 'sha1':
+                    fields[provider.checksum_sha1_header] = calculated_checksum
+                    decode_json_data['conditions'].append(('starts-with', '$%s' % provider.checksum_sha1_header, ''))
+                elif checksum_lower == 'sha256':
+                    fields[provider.checksum_sha256_header] = calculated_checksum
+                    decode_json_data['conditions'].append(('starts-with', '$%s' % provider.checksum_sha256_header, ''))
+                post_policy = json.dumps(decode_json_data).encode('utf-8')
+
         if hasattr(fp, 'name'):
             self.path = fp.name
 
