@@ -50,6 +50,10 @@ class CompleteMultiPartUpload(object):
         self.etag = None
         self.version_id = None
         self.encrypted = None
+        self.checksum_crc32 = None
+        self.checksum_crc32c = None
+        self.checksum_sha1 = None
+        self.checksum_sha256 = None
 
     def __repr__(self):
         return '<CompleteMultiPartUpload: %s.%s>' % (self.bucket_name,
@@ -67,9 +71,16 @@ class CompleteMultiPartUpload(object):
             self.key_name = value
         elif name == 'ETag':
             self.etag = value
+        elif name == 'ChecksumCRC32':
+            self.checksum_crc32 = value
+        elif name == 'ChecksumCRC32C':
+            self.checksum_crc32c = value
+        elif name == 'ChecksumSHA1':
+            self.checksum_sha1 = value
+        elif name == 'ChecksumSHA256':
+            self.checksum_sha256 = value
         else:
             setattr(self, name, value)
-
 
 class Part(object):
     """
@@ -80,6 +91,10 @@ class Part(object):
      * last_modified - The last modified date of this part
      * etag - The MD5 hash of this part
      * size - The size, in bytes, of this part
+     * checksum_crc32 - The CRC32 checksum value of this part
+     * checksum_crc32c - The CRC32C checksum value of this part
+     * checksum_sha1 - The SHA1 checksum value of this part
+     * checksum_sha256 - The SHA256 checksum value of this part
     """
 
     def __init__(self, bucket=None):
@@ -88,6 +103,10 @@ class Part(object):
         self.last_modified = None
         self.etag = None
         self.size = None
+        self.checksum_crc32 = None
+        self.checksum_crc32c = None
+        self.checksum_sha1 = None
+        self.checksum_sha256 = None
 
     def __repr__(self):
         if isinstance(self.part_number, int):
@@ -107,9 +126,16 @@ class Part(object):
             self.etag = value
         elif name == 'Size':
             self.size = int(value)
+        elif name == 'ChecksumCRC32':
+            self.checksum_crc32 = value
+        elif name == 'ChecksumCRC32C':
+            self.checksum_crc32c = value
+        elif name == 'ChecksumSHA1':
+            self.checksum_sha1 = value
+        elif name == 'ChecksumSHA256':
+            self.checksum_sha256 = value
         else:
             setattr(self, name, value)
-
 
 def part_lister(mpupload, part_number_marker=None):
     """
@@ -144,6 +170,7 @@ class MultiPartUpload(object):
         self.max_parts = None
         self.is_truncated = False
         self._parts = None
+        self.checksum_algorithm = None
 
     def __repr__(self):
         return '<MultiPartUpload %s>' % self.key_name
@@ -157,6 +184,14 @@ class MultiPartUpload(object):
             s += '  <Part>\n'
             s += '    <PartNumber>%d</PartNumber>\n' % part.part_number
             s += '    <ETag>%s</ETag>\n' % part.etag
+            if part.checksum_crc32:
+                s += '    <ChecksumCRC32>%s</ChecksumCRC32>\n' % part.checksum_crc32
+            if part.checksum_crc32c:
+                s += '    <ChecksumCRC32C>%s</ChecksumCRC32C>\n' % part.checksum_crc32c
+            if part.checksum_sha1:
+                s += '    <ChecksumSHA1>%s</ChecksumSHA1>\n' % part.checksum_sha1
+            if part.checksum_sha256:
+                s += '    <ChecksumSHA256>%s</ChecksumSHA256>\n' % part.checksum_sha256
             s += '  </Part>\n'
         s += '</CompleteMultipartUpload>'
         return s
@@ -196,6 +231,8 @@ class MultiPartUpload(object):
                 self.is_truncated = False
         elif name == 'Initiated':
             self.initiated = value
+        elif name == 'ChecksumAlgorithm':
+            self.checksum_algorithm = value
         else:
             setattr(self, name, value)
 
@@ -231,7 +268,7 @@ class MultiPartUpload(object):
 
     def upload_part_from_file(self, fp, part_num, headers=None, replace=True,
                               cb=None, num_cb=10, md5=None, size=None,
-                              encrypt_key=None):
+                              encrypt_key=None, checksum=None):
         """
         Upload another part of this MultiPart Upload.
 
@@ -264,7 +301,7 @@ class MultiPartUpload(object):
                                    reduced_redundancy=False,
                                    query_args=query_args,
                                    encrypt_key=encrypt_key,
-                                   size=size)
+                                   size=size, checksum=checksum)
         return key
 
     def copy_part_from_key(self, src_bucket_name, src_key_name, part_num,

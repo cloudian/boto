@@ -46,6 +46,7 @@ from boto.exception import BotoClientError
 from boto.exception import StorageDataError
 from boto.exception import PleaseRetryException
 from boto.provider import Provider
+from boto.s3.checksums import cal_checksum
 from boto.s3.keyfile import KeyFile
 from boto.s3.tagging import Tags
 from boto.s3.user import User
@@ -166,6 +167,11 @@ class Key(object):
         self.object_lock_mode = None
         self.object_lock_retain_until_date = None
         self.object_lock_legal_hold = None
+        self.checksum_algorithm = None
+        self.checksum_crc32 = None
+        self.checksum_crc32c = None
+        self.checksum_sha1 = None
+        self.checksum_sha256 = None
 
     def __repr__(self):
         if self.bucket:
@@ -335,6 +341,39 @@ class Key(object):
             elif key == 'expiry-date':
                 self.expiry_date = val
 
+    def handle_checksum_headers(self, resp):
+        provider = self.bucket.connection.provider
+        # ALGORITHM
+        if provider.checksum_algorithm_header:
+            self.checksum_algorithm = resp.getheader(
+                provider.checksum_algorithm_header, None)
+        else:
+            self.checksum_algorithm = None
+        # CRC32
+        if provider.checksum_crc32_header:
+            self.checksum_crc32 = resp.getheader(
+                provider.checksum_crc32_header, None)
+        else:
+            self.checksum_crc32 = None
+        # CRC32C
+        if provider.checksum_crc32c_header:
+            self.checksum_crc32c = resp.getheader(
+                provider.checksum_crc32c_header, None)
+        else:
+            self.checksum_crc32c = None
+        # SHA1
+        if provider.checksum_sha1_header:
+            self.checksum_sha1 = resp.getheader(
+                provider.checksum_sha1_header, None)
+        else:
+            self.checksum_sha1 = None
+        # SHA256
+        if provider.checksum_sha256_header:
+            self.checksum_sha256 = resp.getheader(
+                provider.checksum_sha256_header, None)
+        else:
+            self.checksum_sha256 = None
+
     def handle_addl_headers(self, headers):
         """
         Used by Key subclasses to do additional, provider-specific
@@ -400,6 +439,7 @@ class Key(object):
             self.handle_tagging_count_headers(self.resp)
             self.handle_mp_parts_count_headers(self.resp)
             self.handle_object_lock_headers(self.resp)
+            self.handle_checksum_headers(self.resp)
             self.handle_addl_headers(self.resp.getheaders())
 
     def open_write(self, headers=None, override_num_retries=None):
@@ -608,6 +648,14 @@ class Key(object):
             pass
         elif name == 'VersionId':
             self.version_id = value
+        elif name == 'ChecksumCRC32':
+            self.checksum_crc32 = value
+        elif name == 'ChecksumCRC32C':
+            self.checksum_crc32c = value
+        elif name == 'ChecksumSHA1':
+            self.checksum_sha1 = value
+        elif name == 'ChecksumSHA256':
+            self.checksum_sha256 = value
         else:
             setattr(self, name, value)
 
@@ -991,6 +1039,7 @@ class Key(object):
             retry_handler=retry_handler
         )
         self.handle_version_headers(resp, force=True)
+        self.handle_checksum_headers(resp)
         self.handle_addl_headers(resp.getheaders())
 
     def add_post_policy(self, post_policy, name, value):
@@ -1426,6 +1475,7 @@ class Key(object):
             retry_handler=retry_handler
         )
         self.handle_version_headers(resp, force=True)
+        self.handle_checksum_headers(resp)
         self.handle_addl_headers(resp.getheaders())
 
     def should_retry(self, response, chunked_transfer=False):
@@ -1604,7 +1654,8 @@ class Key(object):
                                encrypt_key=None, size=None, rewind=False,
                                object_lock_mode=None,
                                object_lock_retain_until_date=None,
-                               object_lock_legal_hold=None):
+                               object_lock_legal_hold=None,
+                               checksum=None):
         """
         Store an object in S3 using the name of the Key object as the
         key in S3 and the contents of the file pointed to by 'fp' as the
@@ -1690,6 +1741,10 @@ class Key(object):
         :param object_lock_legal_hold: ON|OFF. The Legal Hold status that you
             want to apply to the specified object.
 
+        :type checksum: string
+        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to create
+            the checksum for the object.
+
         :rtype: int
         :return: The number of bytes written to the key.
         """
@@ -1705,6 +1760,25 @@ class Key(object):
             headers[provider.object_lock_retain_until_date_header] = object_lock_retain_until_date
         if object_lock_legal_hold is not None:
             headers[provider.object_lock_legal_hold_header] = object_lock_legal_hold
+        if checksum is not None:
+            # "x-amz-sdk-checksum-algorithm" header: CRC32|CRC32C|SHA1|SHA256
+            headers[provider.sdk_checksum_algorithm_header] = checksum
+            # calculate based on the algorithm
+            checksum_lower = checksum.lower()
+            if size is not None:
+                csize = size
+            else:
+                csize = -1
+            if checksum_lower in ['crc32', 'crc32c', 'sha1', 'sha256']:
+                calculated_checksum = cal_checksum(fp, csize, checksum_lower)
+                if checksum_lower == 'crc32':
+                    headers[provider.checksum_crc32_header] = calculated_checksum
+                elif checksum_lower == 'crc32c':
+                    headers[provider.checksum_crc32c_header] = calculated_checksum
+                elif checksum_lower == 'sha1':
+                    headers[provider.checksum_sha1_header] = calculated_checksum
+                elif checksum_lower == 'sha256':
+                    headers[provider.checksum_sha256_header] = calculated_checksum
         if rewind:
             # caller requests reading from beginning of fp.
             fp.seek(0, os.SEEK_SET)
@@ -1946,7 +2020,8 @@ class Key(object):
 
     def post_contents_from_file(self, fp, headers=None, post_policy=None,
                                 fields={}, policy=None,
-                                reduced_redundancy=False, encrypt_key=None):
+                                reduced_redundancy=False, encrypt_key=None,
+                                checksum=None):
         """
         Store an object in S3 using the name of the Key object
         as the key in S3 and the contents of the file pointed to
@@ -1987,6 +2062,10 @@ class Key(object):
             server-side by S3 and will be stored in an encrypted form
             while at rest in S3.
 
+        :type checksum: string
+        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to create
+            the checksum for the object.
+
         :rtype: int
         :return: The number of bytes written to the key.
         """
@@ -2003,6 +2082,29 @@ class Key(object):
             self.storage_class = 'REDUCED_REDUNDANCY'
             if provider.storage_class_header:
                 fields[provider.storage_class_header] = self.storage_class
+        if checksum is not None:
+            # "x-amz-sdk-checksum-algorithm" field: CRC32|CRC32C|SHA1|SHA256
+            fields[provider.sdk_checksum_algorithm_header] = checksum
+            decode_json_data = json.loads(post_policy)
+            decode_json_data['conditions'].append(('starts-with', '$%s' % provider.sdk_checksum_algorithm_header, ''))
+            # calculate based on the algorithm
+            checksum_lower = checksum.lower()
+            if checksum_lower in ['crc32', 'crc32c', 'sha1', 'sha256']:
+                calculated_checksum = cal_checksum(fp, -1, checksum_lower)
+                if checksum_lower == 'crc32':
+                    fields[provider.checksum_crc32_header] = calculated_checksum
+                    decode_json_data['conditions'].append(('starts-with', '$%s' % provider.checksum_crc32_header, ''))
+                elif checksum_lower == 'crc32c':
+                    fields[provider.checksum_crc32c_header] = calculated_checksum
+                    decode_json_data['conditions'].append(('starts-with', '$%s' % provider.checksum_crc32c_header, ''))
+                elif checksum_lower == 'sha1':
+                    fields[provider.checksum_sha1_header] = calculated_checksum
+                    decode_json_data['conditions'].append(('starts-with', '$%s' % provider.checksum_sha1_header, ''))
+                elif checksum_lower == 'sha256':
+                    fields[provider.checksum_sha256_header] = calculated_checksum
+                    decode_json_data['conditions'].append(('starts-with', '$%s' % provider.checksum_sha256_header, ''))
+                post_policy = json.dumps(decode_json_data).encode('utf-8')
+
         if hasattr(fp, 'name'):
             self.path = fp.name
 
@@ -2033,7 +2135,8 @@ class Key(object):
 
     def get_file(self, fp, headers=None, cb=None, num_cb=10,
                  torrent=False, version_id=None, partnum=None,
-                 override_num_retries=None, response_headers=None):
+                 checksum_mode=None, override_num_retries=None,
+                 response_headers=None):
         """
         Retrieves a file from an S3 Key
 
@@ -2083,10 +2186,14 @@ class Key(object):
             This is a positive integer between 1 and the maximum number
             of parts supported. Only objects uploaded using the multipart
             upload API have part numbers.
+
+        :type checksum_mode: str
+        :param checksum_mode: To retrieve the checksum in the response
+            Valid Values: "ENABLED")
         """
         self._get_file_internal(fp, headers=headers, cb=cb, num_cb=num_cb,
                                 torrent=torrent, version_id=version_id,
-                                partnum=partnum,
+                                partnum=partnum, checksum_mode=checksum_mode,
                                 override_num_retries=override_num_retries,
                                 response_headers=response_headers,
                                 hash_algs=None,
@@ -2094,10 +2201,11 @@ class Key(object):
 
     def _get_file_internal(self, fp, headers=None, cb=None, num_cb=10,
                  torrent=False, version_id=None,
-                 partnum=None, override_num_retries=None,
-                 response_headers=None, hash_algs=None, query_args=None):
-        if headers is None:
-            headers = {}
+                 partnum=None, checksum_mode=None,
+                 override_num_retries=None, response_headers=None,
+                 hash_algs=None, query_args=None):
+        provider = self.bucket.connection.provider
+        headers = headers or {}
         save_debug = self.bucket.connection.debug
         if self.bucket.connection.debug == 1:
             self.bucket.connection.debug = 0
@@ -2119,6 +2227,8 @@ class Key(object):
             query_args.append('versionId=%s' % version_id)
         if partnum:
             query_args.append('partNumber=%s' % partnum)
+        if checksum_mode is not None and checksum_mode.upper() == 'ENABLED':
+            headers[provider.checksum_mode_header] = checksum_mode
         if response_headers:
             for key in response_headers:
                 query_args.append('%s=%s' % (
@@ -2204,6 +2314,7 @@ class Key(object):
                              torrent=False,
                              version_id=None,
                              partnum=None,
+                             checksum_mode=None,
                              res_download_handler=None,
                              response_headers=None):
         """
@@ -2259,6 +2370,12 @@ class Key(object):
             This is a positive integer between 1 and the maximum number
             of parts supported. Only objects uploaded using the multipart
             upload API have part numbers.
+
+        :type checksum_mode: str
+        :param checksum_mode: To retrieve the checksum in the response
+            headers of x-amz-checksum-crc32|crc32c|sha1|sha256.
+            Valid Values: "ENABLED")
+
         """
         if self.bucket is not None:
             if res_download_handler:
@@ -2268,6 +2385,7 @@ class Key(object):
             else:
                 self.get_file(fp, headers, cb, num_cb, torrent=torrent,
                               version_id=version_id, partnum=partnum,
+                              checksum_mode=checksum_mode,
                               response_headers=response_headers)
 
     def get_contents_to_filename(self, filename, headers=None,
@@ -2275,6 +2393,7 @@ class Key(object):
                                  torrent=False,
                                  version_id=None,
                                  partnum=None,
+                                 checksum_mode=None,
                                  res_download_handler=None,
                                  response_headers=None):
         """
@@ -2330,12 +2449,18 @@ class Key(object):
             This is a positive integer between 1 and the maximum number
             of parts supported. Only objects uploaded using the multipart
             upload API have part numbers.
+
+        :type checksum_mode: str
+        :param checksum_mode: To retrieve the checksum in the response
+            headers of x-amz-checksum-crc32|crc32c|sha1|sha256.
+            Valid Values: "ENABLED")
         """
         try:
             with open(filename, 'wb') as fp:
                 self.get_contents_to_file(fp, headers, cb, num_cb,
                                           torrent=torrent,
                                           version_id=version_id, partnum=partnum,
+                                          checksum_mode=checksum_mode,
                                           res_download_handler=res_download_handler,
                                           response_headers=response_headers)
         except Exception:
@@ -2355,6 +2480,7 @@ class Key(object):
                                torrent=False,
                                version_id=None,
                                partnum=None,
+                               checksum_mode=None,
                                response_headers=None, encoding=None):
         """
         Retrieve an object from S3 using the name of the Key object as the
@@ -2403,6 +2529,11 @@ class Key(object):
             of parts supported. Only objects uploaded using the multipart
             upload API have part numbers.
 
+        :type checksum_mode: str
+        :param checksum_mode: To retrieve the checksum in the response
+            headers of x-amz-checksum-crc32|crc32c|sha1|sha256.
+            Valid Values: "ENABLED")
+
         :type encoding: str
         :param encoding: The text encoding to use, such as ``utf-8``
             or ``iso-8859-1``. If set, then a string will be returned.
@@ -2414,6 +2545,7 @@ class Key(object):
         fp = BytesIO()
         self.get_contents_to_file(fp, headers, cb, num_cb, torrent=torrent,
                                   version_id=version_id, partnum=partnum,
+                                  checksum_mode=checksum_mode,
                                   response_headers=response_headers)
         value = fp.getvalue()
 
