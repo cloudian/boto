@@ -648,6 +648,8 @@ class Key(object):
             pass
         elif name == 'VersionId':
             self.version_id = value
+        elif name == 'ChecksumAlgorithm':
+            self.checksum_algorithm = value
         elif name == 'ChecksumCRC32':
             self.checksum_crc32 = value
         elif name == 'ChecksumCRC32C':
