@@ -2229,7 +2229,7 @@ class Key(object):
             query_args.append('versionId=%s' % version_id)
         if partnum:
             query_args.append('partNumber=%s' % partnum)
-        if checksum_mode is not None and checksum_mode.upper() == 'ENABLED':
+        if checksum_mode is not None:
             headers[provider.checksum_mode_header] = checksum_mode
         if response_headers:
             for key in response_headers:

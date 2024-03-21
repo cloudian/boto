@@ -216,9 +216,8 @@ class Bucket(object):
             query_args_l.append('versionId=%s' % version_id)
         if partnum:
             query_args_l.append('partNumber=%s' % partnum)
-        if checksum_mode is not None and checksum_mode.upper() == 'ENABLED':
+        if checksum_mode is not None:
             headers[provider.checksum_mode_header] = checksum_mode
-
         if response_headers:
             for rk, rv in six.iteritems(response_headers):
                 query_args_l.append('%s=%s' % (rk, urllib.parse.quote(rv)))
