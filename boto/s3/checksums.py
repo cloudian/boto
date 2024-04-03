@@ -129,6 +129,7 @@ def crc32c_cal(data):
 
 def cal_checksum(fp, size=-1, type='crc32'):
     checksum = None
+    cpos = fp.tell()
     rdata = fp.read(size)
     if type == 'crc32':
         checksum = binascii.crc32(rdata, CRC32_INIT) & _MASK
@@ -146,5 +147,5 @@ def cal_checksum(fp, size=-1, type='crc32'):
         h.update(rdata)
         dig = h.digest()
         checksum = base64.b64encode(dig).decode('utf-8')
-    fp.seek(0)
+    fp.seek(cpos)
     return checksum
