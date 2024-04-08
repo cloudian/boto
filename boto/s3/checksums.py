@@ -127,25 +127,31 @@ def crc32c_cal(data):
   """
   return crc32c_finalize(crc32c_update(CRC32_INIT, data))
 
-def cal_checksum(fp, size=-1, type='crc32'):
+def cal_checksum(fp=None, size=-1, ctype='crc32', rdata=None):
     checksum = None
-    cpos = fp.tell()
-    rdata = fp.read(size)
-    if type == 'crc32':
+    if rdata is not None:
+        rdata = rdata
+    elif fp is not None:
+        cpos = fp.tell()
+        rdata = fp.read(size)
+    if ctype == 'crc32':
         checksum = binascii.crc32(rdata, CRC32_INIT) & _MASK
         checksum = base64.b64encode(checksum.to_bytes(4, 'big')).decode('utf-8')
-    elif type == 'crc32c':
+    elif ctype == 'crc32c':
         checksum = crc32c_cal(rdata)
         checksum = base64.b64encode(checksum.to_bytes(4, 'big')).decode('utf-8')
-    elif type == 'sha1':
-        h = hashlib.sha1()
-        h.update(rdata)
+    elif ctype in ['sha1', 'sha256']:
+        if ctype == 'sha1':
+            h = hashlib.sha1()
+        else:
+            h = hashlib.sha256()
+        if type(rdata) is list:
+            for d in rdata:
+                h.update(d)
+        elif type(rdata) is bytes:
+            h.update(rdata)
         dig = h.digest()
         checksum = base64.b64encode(dig).decode('utf-8')
-    elif type == 'sha256':
-        h = hashlib.sha256()
-        h.update(rdata)
-        dig = h.digest()
-        checksum = base64.b64encode(dig).decode('utf-8')
-    fp.seek(cpos)
+    if fp is not None:
+        fp.seek(cpos)
     return checksum
