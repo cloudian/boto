@@ -127,10 +127,12 @@ def crc32c_cal(data):
   """
   return crc32c_finalize(crc32c_update(CRC32_INIT, data))
 
-def cal_checksum(fp=None, size=-1, ctype='crc32', rdata=None):
+# Caller should specify at least 'fp' or 'data'
+# and 'data' is higher priority to use for checksum calculation.
+def cal_checksum(fp=None, size=-1, ctype='crc32', data=None):
     checksum = None
-    if rdata is not None:
-        rdata = rdata
+    if data is not None:
+        rdata = data
     elif fp is not None:
         cpos = fp.tell()
         rdata = fp.read(size)
