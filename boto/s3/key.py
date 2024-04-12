@@ -2684,7 +2684,7 @@ class Key(object):
                                                   response.read())
         return response.read()
 
-    def restore(self, days, headers=None):
+    def restore(self, days, headers=None, checksum=None):
         """Restore an object from an archive.
 
         :type days: int
@@ -2696,11 +2696,31 @@ class Key(object):
             If the object has not been restored, this param is with
             respect to the completion time of the request.
 
+        :type checksum: string
+        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to create
+            the checksum for the request body.
+
         """
+        provider = self.bucket.connection.provider
         data = self.RestoreBody % days
         md5 = compute_md5(BytesIO(data.encode('utf-8')))
         headers = headers or {}
         headers['Content-MD5'] = md5[1]
+        if checksum is not None:
+            # "x-amz-sdk-checksum-algorithm" header: CRC32|CRC32C|SHA1|SHA256
+            headers[provider.sdk_checksum_algorithm_header] = checksum
+            # calculate based on the algorithm
+            checksum_lower = checksum.lower()
+            if checksum_lower in ['crc32', 'crc32c', 'sha1', 'sha256']:
+                calculated_checksum = cal_checksum(None, -1, checksum_lower, data.encode('utf-8'))
+                if checksum_lower == 'crc32':
+                    headers[provider.checksum_crc32_header] = calculated_checksum
+                elif checksum_lower == 'crc32c':
+                    headers[provider.checksum_crc32c_header] = calculated_checksum
+                elif checksum_lower == 'sha1':
+                    headers[provider.checksum_sha1_header] = calculated_checksum
+                elif checksum_lower == 'sha256':
+                    headers[provider.checksum_sha256_header] = calculated_checksum
         qargs = 'restore'
         if self.version_id is not None:
             qargs = 'restore&versionId=' + self.version_id
@@ -2709,7 +2729,6 @@ class Key(object):
             data=data,
             headers=headers, query_args=qargs)
         if response.status not in (200, 202):
-            provider = self.bucket.connection.provider
             raise provider.storage_response_error(response.status,
                                                   response.reason,
                                                   response.read())
