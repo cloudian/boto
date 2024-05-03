@@ -1359,7 +1359,7 @@ class Key(object):
             if response.status == 400:
                 body = response.read()
                 if (body is not None and
-                    body.find('AWS4-HMAC-SHA256') != -1):
+                    body.find(b'AWS4-HMAC-SHA256') != -1):
                     boto.log.debug("Reworking request for AWS4-HMAC-SHA256")
                     if spos is not None and spos != fp.tell():
                         fp.seek(spos)
