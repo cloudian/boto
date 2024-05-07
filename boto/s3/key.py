@@ -2705,10 +2705,12 @@ class Key(object):
 
         """
         provider = self.bucket.connection.provider
-        data = self.RestoreBody % days
-        md5 = compute_md5(BytesIO(data.encode('utf-8')))
         headers = headers or {}
+        data = self.RestoreBody % days
+        md5 = boto.utils.compute_md5(StringIO(data))
         headers['Content-MD5'] = md5[1]
+        if not isinstance(data, bytes):
+            data = data.encode('utf-8')
         if checksum is not None:
             # "x-amz-sdk-checksum-algorithm" header: CRC32|CRC32C|SHA1|SHA256
             # If key/value already provided in headers dictionary, we will use it as is.
@@ -2717,7 +2719,7 @@ class Key(object):
             # calculate based on the algorithm
             checksum_lower = checksum.lower()
             if checksum_lower in ['crc32', 'crc32c', 'sha1', 'sha256']:
-                calculated_checksum = cal_checksum(None, -1, checksum_lower, data.encode('utf-8'))
+                calculated_checksum = cal_checksum(None, -1, checksum_lower, data)
                 # If key/value already provided in headers dictionary, we will use it as is.
                 if checksum_lower == 'crc32' and provider.checksum_crc32_header not in headers:
                     headers[provider.checksum_crc32_header] = calculated_checksum
@@ -2762,12 +2764,13 @@ class Key(object):
             raise self.bucket.connection.provider.storage_response_error(
                 response.status, response.reason, body)
 
-    def set_tags(self, tags, headers=None):
-        return self.set_xml_tags(tags.to_xml(), headers=headers)
+    def set_tags(self, tags, headers=None, checksum=None):
+        return self.set_xml_tags(tags.to_xml(), headers=headers, checksum=checksum)
 
-    def set_xml_tags(self, tag_str, headers=None, query_args='tagging'):
-        if headers is None:
-            headers = {}
+    def set_xml_tags(self, tag_str, headers=None, query_args='tagging',
+                     checksum=None):
+        provider = self.bucket.connection.provider
+        headers = headers or {}
         md5 = boto.utils.compute_md5(StringIO(tag_str))
         headers['Content-MD5'] = md5[1]
         headers['Content-Type'] = 'text/xml'
@@ -2775,6 +2778,24 @@ class Key(object):
             tag_str = tag_str.encode('utf-8')
         if self.version_id:
             query_args += '&versionId=%s' % self.version_id
+        if checksum is not None:
+            # "x-amz-sdk-checksum-algorithm" header: CRC32|CRC32C|SHA1|SHA256
+            # If key/value already provided in headers dictionary, we will use it as is.
+            if provider.sdk_checksum_algorithm_header not in headers:
+                headers[provider.sdk_checksum_algorithm_header] = checksum
+            # calculate based on the algorithm
+            checksum_lower = checksum.lower()
+            if checksum_lower in ['crc32', 'crc32c', 'sha1', 'sha256']:
+                calculated_checksum = cal_checksum(None, -1, checksum_lower, tag_str)
+                # If key/value already provided in headers dictionary, we will use it as is.
+                if checksum_lower == 'crc32' and provider.checksum_crc32_header not in headers:
+                    headers[provider.checksum_crc32_header] = calculated_checksum
+                elif checksum_lower == 'crc32c' and provider.checksum_crc32c_header not in headers:
+                    headers[provider.checksum_crc32c_header] = calculated_checksum
+                elif checksum_lower == 'sha1' and provider.checksum_sha1_header not in headers:
+                    headers[provider.checksum_sha1_header] = calculated_checksum
+                elif checksum_lower == 'sha256' and provider.checksum_sha256_header not in headers:
+                    headers[provider.checksum_sha256_header] = calculated_checksum
         response = self.bucket.connection.make_request(
             'PUT', self.bucket.name, self.name,
             data=tag_str,
@@ -2782,7 +2803,7 @@ class Key(object):
             headers=headers)
         body = response.read()
         if response.status != 200:
-            raise self.bucket.connection.provider.storage_response_error(
+            raise provider.storage_response_error(
                 response.status, response.reason, body)
         return True
 
@@ -2803,25 +2824,46 @@ class Key(object):
 
     def set_retention(self, object_lock_mode, object_lock_retain_until_date,
                       version_id=None, headers=None,
-                      bypass_governance_retention=None):
+                      bypass_governance_retention=None,
+                      checksum=None):
+        provider = self.bucket.connection.provider
+        headers = headers or {}
         if object_lock_mode is None and object_lock_retain_until_date is None:
             data = self.RetentionEmptyBody
         else:
             data = self.RetentionBody % (object_lock_mode, object_lock_retain_until_date)
-        md5 = compute_md5(BytesIO(data.encode('utf-8')))
-        headers = headers or {}
+        md5 = boto.utils.compute_md5(StringIO(data))
         headers['Content-MD5'] = md5[1]
+        if not isinstance(data, bytes):
+            data = data.encode('utf-8')
         if bypass_governance_retention is not None:
-            headers[self.bucket.connection.provider.bypass_governance_retention_header] = bypass_governance_retention
+            headers[provider.bypass_governance_retention_header] = bypass_governance_retention
         qargs = 'retention'
         if version_id is not None:
             qargs += '&versionId=' + version_id
+        if checksum is not None:
+            # "x-amz-sdk-checksum-algorithm" header: CRC32|CRC32C|SHA1|SHA256
+            # If key/value already provided in headers dictionary, we will use it as is.
+            if provider.sdk_checksum_algorithm_header not in headers:
+                headers[provider.sdk_checksum_algorithm_header] = checksum
+            # calculate based on the algorithm
+            checksum_lower = checksum.lower()
+            if checksum_lower in ['crc32', 'crc32c', 'sha1', 'sha256']:
+                calculated_checksum = cal_checksum(None, -1, checksum_lower, data)
+                # If key/value already provided in headers dictionary, we will use it as is.
+                if checksum_lower == 'crc32' and provider.checksum_crc32_header not in headers:
+                    headers[provider.checksum_crc32_header] = calculated_checksum
+                elif checksum_lower == 'crc32c' and provider.checksum_crc32c_header not in headers:
+                    headers[provider.checksum_crc32c_header] = calculated_checksum
+                elif checksum_lower == 'sha1' and provider.checksum_sha1_header not in headers:
+                    headers[provider.checksum_sha1_header] = calculated_checksum
+                elif checksum_lower == 'sha256' and provider.checksum_sha256_header not in headers:
+                    headers[provider.checksum_sha256_header] = calculated_checksum
         response = self.bucket.connection.make_request(
             'PUT', self.bucket.name, self.name,
             data=data,
             headers=headers, query_args=qargs)
         if response.status != 200:
-            provider = self.bucket.connection.provider
             raise provider.storage_response_error(response.status,
                                                   response.reason,
                                                   response.read())
@@ -2842,20 +2884,41 @@ class Key(object):
                                                   response.reason,
                                                   response.read())
 
-    def set_legal_hold(self, object_lock_legal_hold, version_id=None, headers=None):
-        data = self.LegalHoldBody % object_lock_legal_hold
-        md5 = compute_md5(BytesIO(data.encode('utf-8')))
+    def set_legal_hold(self, object_lock_legal_hold, version_id=None, headers=None,
+                       checksum=None):
+        provider = self.bucket.connection.provider
         headers = headers or {}
+        data = self.LegalHoldBody % object_lock_legal_hold
+        md5 = boto.utils.compute_md5(StringIO(data))
         headers['Content-MD5'] = md5[1]
+        if not isinstance(data, bytes):
+            data = data.encode('utf-8')
         qargs = 'legal-hold'
         if version_id is not None:
             qargs += '&versionId=' + version_id
+        if checksum is not None:
+            # "x-amz-sdk-checksum-algorithm" header: CRC32|CRC32C|SHA1|SHA256
+            # If key/value already provided in headers dictionary, we will use it as is.
+            if provider.sdk_checksum_algorithm_header not in headers:
+                headers[provider.sdk_checksum_algorithm_header] = checksum
+            # calculate based on the algorithm
+            checksum_lower = checksum.lower()
+            if checksum_lower in ['crc32', 'crc32c', 'sha1', 'sha256']:
+                calculated_checksum = cal_checksum(None, -1, checksum_lower, data)
+                # If key/value already provided in headers dictionary, we will use it as is.
+                if checksum_lower == 'crc32' and provider.checksum_crc32_header not in headers:
+                    headers[provider.checksum_crc32_header] = calculated_checksum
+                elif checksum_lower == 'crc32c' and provider.checksum_crc32c_header not in headers:
+                    headers[provider.checksum_crc32c_header] = calculated_checksum
+                elif checksum_lower == 'sha1' and provider.checksum_sha1_header not in headers:
+                    headers[provider.checksum_sha1_header] = calculated_checksum
+                elif checksum_lower == 'sha256' and provider.checksum_sha256_header not in headers:
+                    headers[provider.checksum_sha256_header] = calculated_checksum
         response = self.bucket.connection.make_request(
             'PUT', self.bucket.name, self.name,
             data=data,
             headers=headers, query_args=qargs)
         if response.status != 200:
-            provider = self.bucket.connection.provider
             raise provider.storage_response_error(response.status,
                                                   response.reason,
                                                   response.read())
