@@ -87,6 +87,11 @@ class Bucket(object):
          <Payer>%s</Payer>
        </RequestPaymentConfiguration>"""
 
+    VersioningBodyNoMfaDelete = """<?xml version="1.0" encoding="UTF-8"?>
+       <VersioningConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+         <Status>%s</Status>
+       </VersioningConfiguration>"""
+
     VersioningBody = """<?xml version="1.0" encoding="UTF-8"?>
        <VersioningConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
          <Status>%s</Status>
@@ -1524,7 +1529,7 @@ class Bucket(object):
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
 
-    def configure_versioning(self, versioning, mfa_delete=False,
+    def configure_versioning(self, versioning, mfa_delete=None,
                              mfa_token=None, headers=None):
         """
         Configure versioning for this bucket.
@@ -1535,7 +1540,7 @@ class Bucket(object):
         :param versioning: A boolean indicating whether version is
             enabled (True) or disabled (False).
 
-        :type mfa_delete: bool
+        :type mfa_delete: bool or None
         :param mfa_delete: A boolean indicating whether the
             Multi-Factor Authentication Delete feature is enabled
             (True) or disabled (False).  If mfa_delete is enabled then
@@ -1549,15 +1554,12 @@ class Bucket(object):
             required when you are changing the status of the MfaDelete
             property of the bucket.
         """
-        if versioning:
-            ver = 'Enabled'
+        ver = 'Enabled' if versioning else 'Suspended'
+        if mfa_delete is None:
+            body = self.VersioningBodyNoMfaDelete % ver
         else:
-            ver = 'Suspended'
-        if mfa_delete:
-            mfa = 'Enabled'
-        else:
-            mfa = 'Disabled'
-        body = self.VersioningBody % (ver, mfa)
+            mfa = 'Enabled' if mfa_delete else 'Disabled'
+            body = self.VersioningBody % (ver, mfa)
         if mfa_token:
             if not headers:
                 headers = {}
@@ -1579,10 +1581,10 @@ class Bucket(object):
         :rtype: dict
         :returns: A dictionary containing a key named 'Versioning'
             that can have a value of either Enabled, Disabled, or
-            Suspended. Also, if MFADelete has ever been enabled on the
+            Suspended. Also, if MfaDelete has ever been set on the
             bucket, the dictionary will contain a key named
-            'MFADelete' which will have a value of either Enabled or
-            Suspended.
+            'MfaDelete' which will have a value of either Enabled or
+            Disabled.
         """
         response = self.connection.make_request('GET', self.name,
                 query_args='versioning', headers=headers)
