@@ -37,6 +37,7 @@ from boto.s3.bucketlistresultset import BucketListResultSet
 from boto.s3.bucketlistresultset import BucketListResultSetV2
 from boto.s3.bucketlistresultset import VersionedBucketListResultSet
 from boto.s3.bucketlistresultset import MultiPartUploadListResultSet
+from boto.s3.checksums import set_checksum_header
 from boto.s3.lifecycle import Lifecycle
 from boto.s3.crr import CRR
 from boto.s3.inventory import Inventory, InventoryConfiguration
@@ -810,7 +811,7 @@ class Bucket(object):
                                             expires_in_absolute=expires_in_absolute)
 
     def delete_keys(self, keys, quiet=False, mfa_token=None, headers=None,
-                    bypass_governance_retention=None):
+                    bypass_governance_retention=None, checksum=None):
         """
         Deletes a set of keys using S3's Multi-object delete API. If a
         VersionID is specified for that key then that version is removed.
@@ -837,6 +838,10 @@ class Bucket(object):
         :type bypass_governance_retention: boolean
         :param bypass_governance_retention: If ``True`` or ``False``, it will
             be set to x-amz-bypass-governance-retention header as value
+
+        :type checksum: string
+        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to
+            create the checksum for the request body.
 
         :returns: An instance of MultiDeleteResult
         """
@@ -884,15 +889,15 @@ class Bucket(object):
             data += u"</Delete>"
             if count <= 0:
                 return False  # no more
-            data = data.encode('utf-8')
-            fp = BytesIO(data)
-            md5 = boto.utils.compute_md5(fp)
+            md5 = boto.utils.compute_md5(StringIO(data))
             headers['Content-MD5'] = md5[1]
             headers['Content-Type'] = 'text/xml'
+            data = data.encode('utf-8')
             if mfa_token:
                 headers[provider.mfa_header] = ' '.join(mfa_token)
             if bypass_governance_retention is not None:
-                headers[self.connection.provider.bypass_governance_retention_header] = bypass_governance_retention
+                headers[provider.bypass_governance_retention_header] = bypass_governance_retention
+            headers = set_checksum_header(checksum, provider, headers, data=data)
             response = self.connection.make_request('POST', self.name,
                                                     headers=headers,
                                                     query_args=query_args,
@@ -1153,24 +1158,28 @@ class Bucket(object):
         return body
 
     def set_xml_acl(self, acl_str, key_name='', headers=None, version_id=None,
-                    query_args='acl'):
+                    query_args='acl', checksum=None):
+        provider = self.connection.provider
+        headers = headers or {}
         if version_id:
             query_args += '&versionId=%s' % version_id
         if not isinstance(acl_str, bytes):
             acl_str = acl_str.encode('utf-8')
+        headers = set_checksum_header(checksum, provider, headers, data=acl_str)
         response = self.connection.make_request('PUT', self.name, key_name,
                                                 data=acl_str,
                                                 query_args=query_args,
                                                 headers=headers)
         body = response.read()
         if response.status != 200:
-            raise self.connection.provider.storage_response_error(
+            raise provider.storage_response_error(
                 response.status, response.reason, body)
 
-    def set_acl(self, acl_or_str, key_name='', headers=None, version_id=None):
+    def set_acl(self, acl_or_str, key_name='', headers=None, version_id=None,
+                checksum=None):
         if isinstance(acl_or_str, Policy):
             self.set_xml_acl(acl_or_str.to_xml(), key_name,
-                             headers, version_id)
+                             headers, version_id, checksum=checksum)
         else:
             self.set_canned_acl(acl_or_str, key_name,
                                 headers, version_id)
@@ -1415,7 +1424,7 @@ class Bucket(object):
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
 
-    def set_xml_logging(self, logging_str, headers=None):
+    def set_xml_logging(self, logging_str, headers=None, checksum=None):
         """
         Set logging on a bucket directly to the given xml string.
 
@@ -1425,23 +1434,30 @@ class Bucket(object):
             it is sent.  Usually, you will obtain this XML from the
             BucketLogging object.
 
+        :type checksum: string
+        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to
+            create the checksum for the request body.
+
         :rtype: bool
         :return: True if ok or raises an exception.
         """
+        provider = self.connection.provider
+        headers = headers or {}
         body = logging_str
         if not isinstance(body, bytes):
             body = body.encode('utf-8')
+        headers = set_checksum_header(checksum, provider, headers, data=body)
         response = self.connection.make_request('PUT', self.name, data=body,
                 query_args='logging', headers=headers)
         body = response.read()
         if response.status == 200:
             return True
         else:
-            raise self.connection.provider.storage_response_error(
+            raise provider.storage_response_error(
                 response.status, response.reason, body)
 
     def enable_logging(self, target_bucket, target_prefix='',
-                       grants=None, headers=None):
+                       grants=None, headers=None, checksum=None):
         """
         Enable logging on a bucket.
 
@@ -1456,6 +1472,10 @@ class Bucket(object):
         :param grants: A list of extra permissions which will be granted on
             the log files which are created.
 
+        :type checksum: string
+        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to
+            create the checksum for the request body.
+
         :rtype: bool
         :return: True if ok or raises an exception.
         """
@@ -1463,17 +1483,23 @@ class Bucket(object):
             target_bucket = target_bucket.name
         blogging = BucketLogging(target=target_bucket, prefix=target_prefix,
                                  grants=grants)
-        return self.set_xml_logging(blogging.to_xml(), headers=headers)
+        return self.set_xml_logging(blogging.to_xml(), headers=headers,
+                                    checksum=checksum)
 
-    def disable_logging(self, headers=None):
+    def disable_logging(self, headers=None, checksum=None):
         """
         Disable logging on a bucket.
+
+        :type checksum: string
+        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to
+            create the checksum for the request body.
 
         :rtype: bool
         :return: True if ok or raises an exception.
         """
         blogging = BucketLogging()
-        return self.set_xml_logging(blogging.to_xml(), headers=headers)
+        return self.set_xml_logging(blogging.to_xml(), headers=headers,
+                                    checksum=checksum)
 
     def get_logging_status(self, headers=None):
         """
@@ -1530,7 +1556,7 @@ class Bucket(object):
                 response.status, response.reason, body)
 
     def configure_versioning(self, versioning, mfa_delete=None,
-                             mfa_token=None, headers=None):
+                             mfa_token=None, headers=None, checksum=None):
         """
         Configure versioning for this bucket.
 
@@ -1553,25 +1579,31 @@ class Bucket(object):
             six-digit token associated with the device.  This value is
             required when you are changing the status of the MfaDelete
             property of the bucket.
+
+        :type checksum: string
+        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to
+            create the checksum for the request body.
+
         """
+        provider = self.connection.provider
+        headers = headers or {}
         ver = 'Enabled' if versioning else 'Suspended'
         if mfa_delete is None:
             body = self.VersioningBodyNoMfaDelete % ver
         else:
             mfa = 'Enabled' if mfa_delete else 'Disabled'
             body = self.VersioningBody % (ver, mfa)
+        body = body.encode('utf-8')
         if mfa_token:
-            if not headers:
-                headers = {}
-            provider = self.connection.provider
             headers[provider.mfa_header] = ' '.join(mfa_token)
+        headers = set_checksum_header(checksum, provider, headers, data=body)
         response = self.connection.make_request('PUT', self.name, data=body,
                 query_args='versioning', headers=headers)
         body = response.read()
         if response.status == 200:
             return True
         else:
-            raise self.connection.provider.storage_response_error(
+            raise provider.storage_response_error(
                 response.status, response.reason, body)
 
     def get_versioning_status(self, headers=None):
@@ -1605,35 +1637,39 @@ class Bucket(object):
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
 
-    def configure_crr(self, crr_config, headers=None):
+    def configure_crr(self, crr_config, headers=None, checksum=None):
         """
         Configure CRR(cross region replication) for this bucket.
 
         :type crr_config: :class:`boto.s3.crr.CRR`
         :param crr_config: The crr configuration you want
             to configure for this bucket.
+
+        :type checksum: string
+        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to
+            create the checksum for the request body.
         """
+        provider = self.connection.provider
+        headers = headers or {}
         xml = crr_config.to_xml()
-        #xml = xml.encode('utf-8')
-        fp = StringIO(xml)
-        md5 = boto.utils.compute_md5(fp)
-        if headers is None:
-            headers = {}
+        md5 = boto.utils.compute_md5(StringIO(xml))
         headers['Content-MD5'] = md5[1]
         headers['Content-Type'] = 'text/xml'
+        xml = xml.encode('utf-8')
         if crr_config.crr_endpoint is not None:
             headers['x-gmt-crr-endpoint'] = crr_config.crr_endpoint
         if crr_config.crr_credentials is not None:
             headers['x-gmt-crr-credentials'] = crr_config.crr_credentials
+        headers = set_checksum_header(checksum, provider, headers, data=xml)
         response = self.connection.make_request('PUT', self.name,
-                                                data=fp.getvalue(),
+                                                data=xml,
                                                 query_args='replication',
                                                 headers=headers)
         body = response.read()
         if response.status == 200:
             return True
         else:
-            raise self.connection.provider.storage_response_error(
+            raise provider.storage_response_error(
                 response.status, response.reason, body)
 
     def get_crr_config(self, headers=None):
@@ -1676,37 +1712,41 @@ class Bucket(object):
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
 
-    def configure_lifecycle(self, lifecycle_config, headers=None):
+    def configure_lifecycle(self, lifecycle_config, headers=None, checksum=None):
         """
         Configure lifecycle for this bucket.
 
         :type lifecycle_config: :class:`boto.s3.lifecycle.Lifecycle`
         :param lifecycle_config: The lifecycle configuration you want
             to configure for this bucket.
+
+        :type checksum: string
+        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to
+            create the checksum for the request body.
         """
+        provider = self.connection.provider
+        headers = headers or {}
         xml = lifecycle_config.to_xml()
-        #xml = xml.encode('utf-8')
-        fp = StringIO(xml)
-        md5 = boto.utils.compute_md5(fp)
-        if headers is None:
-            headers = {}
+        md5 = boto.utils.compute_md5(StringIO(xml))
         headers['Content-MD5'] = md5[1]
         headers['Content-Type'] = 'text/xml'
+        xml = xml.encode('utf-8')
         if lifecycle_config.tieringinfo is not None:
             headers['x-gmt-tieringinfo'] = lifecycle_config.tieringinfo
         if lifecycle_config.compare is not None:
             headers['x-gmt-compare'] = lifecycle_config.compare
         if lifecycle_config.retain is not None:
             headers['x-gmt-post-tier-copy'] = lifecycle_config.retain
+        headers = set_checksum_header(checksum, provider, headers, data=xml)
         response = self.connection.make_request('PUT', self.name,
-                                                data=fp.getvalue(),
+                                                data=xml,
                                                 query_args='lifecycle',
                                                 headers=headers)
         body = response.read()
         if response.status == 200:
             return True
         else:
-            raise self.connection.provider.storage_response_error(
+            raise provider.storage_response_error(
                 response.status, response.reason, body)
 
     def get_lifecycle_config(self, headers=None):
@@ -1753,7 +1793,8 @@ class Bucket(object):
     def configure_website(self, suffix=None, error_key=None,
                           redirect_all_requests_to=None,
                           routing_rules=None,
-                          headers=None):
+                          headers=None,
+                          checksum=None):
         """
         Configure this bucket to act as a website
 
@@ -1784,19 +1825,24 @@ class Bucket(object):
         config = website.WebsiteConfiguration(
                 suffix, error_key, redirect_all_requests_to,
                 routing_rules)
-        return self.set_website_configuration(config, headers=headers)
+        return self.set_website_configuration(config, headers=headers,
+                                              checksum=checksum)
 
-    def set_website_configuration(self, config, headers=None):
+    def set_website_configuration(self, config, headers=None, checksum=None):
         """
         :type config: boto.s3.website.WebsiteConfiguration
         :param config: Configuration data
         """
         return self.set_website_configuration_xml(config.to_xml(),
-          headers=headers)
+          headers=headers, checksum=checksum)
 
-
-    def set_website_configuration_xml(self, xml, headers=None):
+    def set_website_configuration_xml(self, xml, headers=None, checksum=None):
         """Upload xml website configuration"""
+        provider = self.connection.provider
+        headers = headers or {}
+        if not isinstance(xml, bytes):
+            xml = xml.encode('utf-8')
+        headers = set_checksum_header(checksum, provider, headers, data=xml)
         response = self.connection.make_request('PUT', self.name, data=xml,
                                                 query_args='website',
                                                 headers=headers)
@@ -1804,7 +1850,7 @@ class Bucket(object):
         if response.status == 200:
             return True
         else:
-            raise self.connection.provider.storage_response_error(
+            raise provider.storage_response_error(
                 response.status, response.reason, body)
 
     def get_website_configuration(self, headers=None):
@@ -1921,20 +1967,25 @@ class Bucket(object):
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
 
-    def put_notification(self, notification, headers=None):
+    def put_notification(self, notification, headers=None, checksum=None):
         """
         Add or replace the notification configuration associated with the bucket.
 
         :type notification: str
         :param notification: The notification configuration as a string.
         """
+        provider = self.connection.provider
+        headers = headers or {}
+        if not isinstance(notification, bytes):
+            notification = notification.encode('utf-8')
+        headers = set_checksum_header(checksum, provider, headers, data=notification)
         response = self.connection.make_request('PUT', self.name,
                                                 data=notification,
                                                 query_args='notification',
                                                 headers=headers)
         body = response.read()
         if response.status != 200:
-            raise self.connection.provider.storage_response_error(
+            raise provider.storage_response_error(
                 response.status, response.reason, body)
 
     def get_lock_policy(self, headers=None):
@@ -2005,13 +2056,23 @@ class Bucket(object):
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
 
-    def set_policy(self, policy, headers=None):
+    def set_policy(self, policy, headers=None, checksum=None):
         """
         Add or replace the JSON policy associated with the bucket.
 
         :type policy: str
         :param policy: The JSON policy as a string.
+
+        :type checksum: string
+        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to
+            create the checksum for the request body.
+
         """
+        provider = self.connection.provider
+        headers = headers or {}
+        if not isinstance(policy, bytes):
+            policy = policy.encode('utf-8')
+        headers = set_checksum_header(checksum, provider, headers, data=policy)
         response = self.connection.make_request('PUT', self.name,
                                                 data=policy,
                                                 query_args='policy',
@@ -2020,7 +2081,7 @@ class Bucket(object):
         if response.status >= 200 and response.status <= 204:
             return True
         else:
-            raise self.connection.provider.storage_response_error(
+            raise provider.storage_response_error(
                 response.status, response.reason, body)
 
     def delete_policy(self, headers=None):
@@ -2034,7 +2095,7 @@ class Bucket(object):
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
 
-    def set_cors_xml(self, cors_xml, headers=None):
+    def set_cors_xml(self, cors_xml, headers=None, checksum=None):
         """
         Set the CORS (Cross-Origin Resource Sharing) for a bucket.
 
@@ -2043,24 +2104,26 @@ class Bucket(object):
             CORS configuration.  See the S3 documentation for details
             of the exact syntax required.
         """
-        fp = StringIO(cors_xml)
-        md5 = boto.utils.compute_md5(fp)
-        if headers is None:
-            headers = {}
+        provider = self.connection.provider
+        headers = headers or {}
+        md5 = boto.utils.compute_md5(StringIO(cors_xml))
         headers['Content-MD5'] = md5[1]
         headers['Content-Type'] = 'text/xml'
+        if not isinstance(cors_xml, bytes):
+            cors_xml = cors_xml.encode('utf-8')
+        headers = set_checksum_header(checksum, provider, headers, data=cors_xml)
         response = self.connection.make_request('PUT', self.name,
-                                                data=fp.getvalue(),
+                                                data=cors_xml,
                                                 query_args='cors',
                                                 headers=headers)
         body = response.read()
         if response.status == 200:
             return True
         else:
-            raise self.connection.provider.storage_response_error(
+            raise provider.storage_response_error(
                 response.status, response.reason, body)
 
-    def set_cors(self, cors_config, headers=None):
+    def set_cors(self, cors_config, headers=None, checksum=None):
         """
         Set the CORS for this bucket given a boto CORSConfiguration
         object.
@@ -2069,7 +2132,8 @@ class Bucket(object):
         :param cors_config: The CORS configuration you want
             to configure for this bucket.
         """
-        return self.set_cors_xml(cors_config.to_xml(), headers=headers)
+        return self.set_cors_xml(cors_config.to_xml(), headers=headers,
+                                 checksum=checksum)
 
     def get_cors_xml(self, headers=None):
         """
@@ -2355,26 +2419,27 @@ class Bucket(object):
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
 
-    def set_xml_tags(self, tag_str, headers=None, query_args='tagging'):
-        if headers is None:
-            headers = {}
+    def set_xml_tags(self, tag_str, headers=None, query_args='tagging', checksum=None):
+        provider = self.connection.provider
+        headers = headers or {}
         md5 = boto.utils.compute_md5(StringIO(tag_str))
         headers['Content-MD5'] = md5[1]
         headers['Content-Type'] = 'text/xml'
         if not isinstance(tag_str, bytes):
             tag_str = tag_str.encode('utf-8')
+        headers = set_checksum_header(checksum, provider, headers, data=tag_str)
         response = self.connection.make_request('PUT', self.name,
                                                 data=tag_str,
                                                 query_args=query_args,
                                                 headers=headers)
         body = response.read()
         if response.status != 204:
-            raise self.connection.provider.storage_response_error(
+            raise provider.storage_response_error(
                 response.status, response.reason, body)
         return True
 
-    def set_tags(self, tags, headers=None):
-        return self.set_xml_tags(tags.to_xml(), headers=headers)
+    def set_tags(self, tags, headers=None, checksum=None):
+        return self.set_xml_tags(tags.to_xml(), headers=headers, checksum=checksum)
 
     def delete_tags(self, headers=None):
         response = self.connection.make_request('DELETE', self.name,
@@ -2401,7 +2466,7 @@ class Bucket(object):
         s += '  </ServerSideEncryptionConfiguration>\n'
         return s
 
-    def configure_encryption(self, ssealgorithm, kmsmasterkeyid=None, headers=None):
+    def configure_encryption(self, ssealgorithm, kmsmasterkeyid=None, headers=None, checksum=None):
         """
         Configure encryption for this bucket.
 
@@ -2413,18 +2478,25 @@ class Bucket(object):
         :param kmsmasterkeyid: The AWS KMS master key ID used for the SSE-KMS
                                encryption
 
+        :type checksum: string
+        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to
+            create the checksum for the request body.
+
         :returns: True if the configuration succeeds or else
                   throws an exception
         """
-
+        provider = self.connection.provider
+        headers = headers or {}
         body = self.make_encryption_body(ssealgorithm, kmsmasterkeyid)
+        body = body.encode('utf-8')
+        headers = set_checksum_header(checksum, provider, headers, data=body)
         response = self.connection.make_request('PUT', self.name, data=body,
                 query_args='encryption', headers=headers)
         body = response.read()
         if response.status == 200:
             return True
         else:
-            raise self.connection.provider.storage_response_error(
+            raise provider.storage_response_error(
                 response.status, response.reason, body)
 
     def get_encryption_config(self, headers=None):
@@ -2447,17 +2519,18 @@ class Bucket(object):
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
 
-    def put_xml_bucket_objectlock_config(self, xml, headers=None):
+    def put_xml_bucket_objectlock_config(self, xml, headers=None, checksum=None):
         """
         PUT Bucket object lock configuration for this bucket.
 
         """
-        if headers is None:
-            headers = {}
+        provider = self.connection.provider
+        headers = headers or {}
         md5 = boto.utils.compute_md5(StringIO(xml))
         headers['Content-MD5'] = md5[1]
         if not isinstance(xml, bytes):
             xml = xml.encode('utf-8')
+        headers = set_checksum_header(checksum, provider, headers, data=xml)
         response = self.connection.make_request('PUT', self.name, data=xml,
                                                 query_args='object-lock',
                                                 headers=headers)
@@ -2465,11 +2538,12 @@ class Bucket(object):
         if response.status == 200:
             return body
         else:
-            raise self.connection.provider.storage_response_error(
+            raise provider.storage_response_error(
                 response.status, response.reason, body)
 
-    def put_bucket_objectlock_config(self, olc, headers=None):
-        return self.put_xml_bucket_objectlock_config(olc.to_xml(), headers=headers)
+    def put_bucket_objectlock_config(self, olc, headers=None, checksum=None):
+        return self.put_xml_bucket_objectlock_config(olc.to_xml(), headers=headers,
+                                                     checksum=checksum)
 
     def get_xml_bucket_objectlock_config(self, headers=None):
         """
@@ -2699,7 +2773,8 @@ class Bucket(object):
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
 
-    def put_bucket_public_access_block_config(self, pab, headers=None):
+    def put_bucket_public_access_block_config(self, pab, headers=None,
+                                              checksum=None):
         """
         PUT Public Access Block configuration for this bucket.
 
@@ -2710,14 +2785,13 @@ class Bucket(object):
         :type headers: dict
         :param headers: Additional HTTP headers to include in the request.
         """
-
+        provider = self.connection.provider
+        headers = headers or {}
         xml = pab.to_xml()
-        if headers is None:
-            headers = {}
         md5 = boto.utils.compute_md5(StringIO(xml))
         headers['Content-MD5'] = md5[1]
-        if not isinstance(xml, bytes):
-            xml = xml.encode('utf-8')
+        xml = xml.encode('utf-8')
+        headers = set_checksum_header(checksum, provider, headers, data=xml)
         response = self.connection.make_request('PUT', self.name, data=xml,
                                                 query_args='publicAccessBlock',
                                                 headers=headers)
@@ -2725,7 +2799,7 @@ class Bucket(object):
         if response.status == 200:
             return body
         else:
-            raise self.connection.provider.storage_response_error(
+            raise provider.storage_response_error(
                 response.status, response.reason, body)
 
     def get_bucket_public_access_block_config(self, headers=None):
