@@ -46,7 +46,7 @@ from boto.exception import BotoClientError
 from boto.exception import StorageDataError
 from boto.exception import PleaseRetryException
 from boto.provider import Provider
-from boto.s3.checksums import cal_checksum
+from boto.s3.checksums import cal_checksum, configure_checksum_headers
 from boto.s3.keyfile import KeyFile
 from boto.s3.tagging import Tags
 from boto.s3.user import User
@@ -1762,28 +1762,8 @@ class Key(object):
             headers[provider.object_lock_retain_until_date_header] = object_lock_retain_until_date
         if object_lock_legal_hold is not None:
             headers[provider.object_lock_legal_hold_header] = object_lock_legal_hold
-        if checksum is not None:
-            # "x-amz-sdk-checksum-algorithm" header: CRC32|CRC32C|SHA1|SHA256
-            # If key/value already provided in headers dictionary, we will use it as is.
-            if provider.sdk_checksum_algorithm_header not in headers:
-                headers[provider.sdk_checksum_algorithm_header] = checksum
-            # calculate based on the algorithm
-            checksum_lower = checksum.lower()
-            if size is not None:
-                csize = size
-            else:
-                csize = -1
-            if checksum_lower in ['crc32', 'crc32c', 'sha1', 'sha256']:
-                calculated_checksum = cal_checksum(fp, csize, checksum_lower)
-                # If key/value already provided in headers dictionary, we will use it as is.
-                if checksum_lower == 'crc32' and provider.checksum_crc32_header not in headers:
-                    headers[provider.checksum_crc32_header] = calculated_checksum
-                elif checksum_lower == 'crc32c' and provider.checksum_crc32c_header not in headers:
-                    headers[provider.checksum_crc32c_header] = calculated_checksum
-                elif checksum_lower == 'sha1' and provider.checksum_sha1_header not in headers:
-                    headers[provider.checksum_sha1_header] = calculated_checksum
-                elif checksum_lower == 'sha256' and provider.checksum_sha256_header not in headers:
-                    headers[provider.checksum_sha256_header] = calculated_checksum
+        size = size or -1
+        headers = configure_checksum_headers(checksum, provider, headers, fp=fp, size=size)
         if rewind:
             # caller requests reading from beginning of fp.
             fp.seek(0, os.SEEK_SET)
@@ -2711,24 +2691,7 @@ class Key(object):
         headers['Content-MD5'] = md5[1]
         if not isinstance(data, bytes):
             data = data.encode('utf-8')
-        if checksum is not None:
-            # "x-amz-sdk-checksum-algorithm" header: CRC32|CRC32C|SHA1|SHA256
-            # If key/value already provided in headers dictionary, we will use it as is.
-            if provider.sdk_checksum_algorithm_header not in headers:
-                headers[provider.sdk_checksum_algorithm_header] = checksum
-            # calculate based on the algorithm
-            checksum_lower = checksum.lower()
-            if checksum_lower in ['crc32', 'crc32c', 'sha1', 'sha256']:
-                calculated_checksum = cal_checksum(None, -1, checksum_lower, data)
-                # If key/value already provided in headers dictionary, we will use it as is.
-                if checksum_lower == 'crc32' and provider.checksum_crc32_header not in headers:
-                    headers[provider.checksum_crc32_header] = calculated_checksum
-                elif checksum_lower == 'crc32c' and provider.checksum_crc32c_header not in headers:
-                    headers[provider.checksum_crc32c_header] = calculated_checksum
-                elif checksum_lower == 'sha1' and provider.checksum_sha1_header not in headers:
-                    headers[provider.checksum_sha1_header] = calculated_checksum
-                elif checksum_lower == 'sha256' and provider.checksum_sha256_header not in headers:
-                    headers[provider.checksum_sha256_header] = calculated_checksum
+        headers = configure_checksum_headers(checksum, provider, headers, data=data)
         qargs = 'restore'
         if self.version_id is not None:
             qargs = 'restore&versionId=' + self.version_id
@@ -2778,24 +2741,7 @@ class Key(object):
             tag_str = tag_str.encode('utf-8')
         if self.version_id:
             query_args += '&versionId=%s' % self.version_id
-        if checksum is not None:
-            # "x-amz-sdk-checksum-algorithm" header: CRC32|CRC32C|SHA1|SHA256
-            # If key/value already provided in headers dictionary, we will use it as is.
-            if provider.sdk_checksum_algorithm_header not in headers:
-                headers[provider.sdk_checksum_algorithm_header] = checksum
-            # calculate based on the algorithm
-            checksum_lower = checksum.lower()
-            if checksum_lower in ['crc32', 'crc32c', 'sha1', 'sha256']:
-                calculated_checksum = cal_checksum(None, -1, checksum_lower, tag_str)
-                # If key/value already provided in headers dictionary, we will use it as is.
-                if checksum_lower == 'crc32' and provider.checksum_crc32_header not in headers:
-                    headers[provider.checksum_crc32_header] = calculated_checksum
-                elif checksum_lower == 'crc32c' and provider.checksum_crc32c_header not in headers:
-                    headers[provider.checksum_crc32c_header] = calculated_checksum
-                elif checksum_lower == 'sha1' and provider.checksum_sha1_header not in headers:
-                    headers[provider.checksum_sha1_header] = calculated_checksum
-                elif checksum_lower == 'sha256' and provider.checksum_sha256_header not in headers:
-                    headers[provider.checksum_sha256_header] = calculated_checksum
+        headers = configure_checksum_headers(checksum, provider, headers, data=tag_str)
         response = self.bucket.connection.make_request(
             'PUT', self.bucket.name, self.name,
             data=tag_str,
@@ -2841,24 +2787,7 @@ class Key(object):
         qargs = 'retention'
         if version_id is not None:
             qargs += '&versionId=' + version_id
-        if checksum is not None:
-            # "x-amz-sdk-checksum-algorithm" header: CRC32|CRC32C|SHA1|SHA256
-            # If key/value already provided in headers dictionary, we will use it as is.
-            if provider.sdk_checksum_algorithm_header not in headers:
-                headers[provider.sdk_checksum_algorithm_header] = checksum
-            # calculate based on the algorithm
-            checksum_lower = checksum.lower()
-            if checksum_lower in ['crc32', 'crc32c', 'sha1', 'sha256']:
-                calculated_checksum = cal_checksum(None, -1, checksum_lower, data)
-                # If key/value already provided in headers dictionary, we will use it as is.
-                if checksum_lower == 'crc32' and provider.checksum_crc32_header not in headers:
-                    headers[provider.checksum_crc32_header] = calculated_checksum
-                elif checksum_lower == 'crc32c' and provider.checksum_crc32c_header not in headers:
-                    headers[provider.checksum_crc32c_header] = calculated_checksum
-                elif checksum_lower == 'sha1' and provider.checksum_sha1_header not in headers:
-                    headers[provider.checksum_sha1_header] = calculated_checksum
-                elif checksum_lower == 'sha256' and provider.checksum_sha256_header not in headers:
-                    headers[provider.checksum_sha256_header] = calculated_checksum
+        headers = configure_checksum_headers(checksum, provider, headers, data=data)
         response = self.bucket.connection.make_request(
             'PUT', self.bucket.name, self.name,
             data=data,
@@ -2896,24 +2825,7 @@ class Key(object):
         qargs = 'legal-hold'
         if version_id is not None:
             qargs += '&versionId=' + version_id
-        if checksum is not None:
-            # "x-amz-sdk-checksum-algorithm" header: CRC32|CRC32C|SHA1|SHA256
-            # If key/value already provided in headers dictionary, we will use it as is.
-            if provider.sdk_checksum_algorithm_header not in headers:
-                headers[provider.sdk_checksum_algorithm_header] = checksum
-            # calculate based on the algorithm
-            checksum_lower = checksum.lower()
-            if checksum_lower in ['crc32', 'crc32c', 'sha1', 'sha256']:
-                calculated_checksum = cal_checksum(None, -1, checksum_lower, data)
-                # If key/value already provided in headers dictionary, we will use it as is.
-                if checksum_lower == 'crc32' and provider.checksum_crc32_header not in headers:
-                    headers[provider.checksum_crc32_header] = calculated_checksum
-                elif checksum_lower == 'crc32c' and provider.checksum_crc32c_header not in headers:
-                    headers[provider.checksum_crc32c_header] = calculated_checksum
-                elif checksum_lower == 'sha1' and provider.checksum_sha1_header not in headers:
-                    headers[provider.checksum_sha1_header] = calculated_checksum
-                elif checksum_lower == 'sha256' and provider.checksum_sha256_header not in headers:
-                    headers[provider.checksum_sha256_header] = calculated_checksum
+        headers = configure_checksum_headers(checksum, provider, headers, data=data)
         response = self.bucket.connection.make_request(
             'PUT', self.bucket.name, self.name,
             data=data,
