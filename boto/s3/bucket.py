@@ -892,8 +892,7 @@ class Bucket(object):
             md5 = boto.utils.compute_md5(StringIO(data))
             headers['Content-MD5'] = md5[1]
             headers['Content-Type'] = 'text/xml'
-            if not isinstance(data, bytes):
-                data = data.encode('utf-8')
+            data = data.encode('utf-8')
             if mfa_token:
                 headers[provider.mfa_header] = ' '.join(mfa_token)
             if bypass_governance_retention is not None:
@@ -1594,8 +1593,7 @@ class Bucket(object):
         else:
             mfa = 'Enabled' if mfa_delete else 'Disabled'
             body = self.VersioningBody % (ver, mfa)
-        if not isinstance(body, bytes):
-            body = body.encode('utf-8')
+        body = body.encode('utf-8')
         if mfa_token:
             headers[provider.mfa_header] = ' '.join(mfa_token)
         headers = configure_checksum_headers(checksum, provider, headers, data=body)
@@ -1657,8 +1655,7 @@ class Bucket(object):
         md5 = boto.utils.compute_md5(StringIO(xml))
         headers['Content-MD5'] = md5[1]
         headers['Content-Type'] = 'text/xml'
-        if not isinstance(xml, bytes):
-            xml = xml.encode('utf-8')
+        xml = xml.encode('utf-8')
         if crr_config.crr_endpoint is not None:
             headers['x-gmt-crr-endpoint'] = crr_config.crr_endpoint
         if crr_config.crr_credentials is not None:
@@ -1733,8 +1730,7 @@ class Bucket(object):
         md5 = boto.utils.compute_md5(StringIO(xml))
         headers['Content-MD5'] = md5[1]
         headers['Content-Type'] = 'text/xml'
-        if not isinstance(xml, bytes):
-            xml = xml.encode('utf-8')
+        xml = xml.encode('utf-8')
         if lifecycle_config.tieringinfo is not None:
             headers['x-gmt-tieringinfo'] = lifecycle_config.tieringinfo
         if lifecycle_config.compare is not None:
@@ -2492,8 +2488,7 @@ class Bucket(object):
         provider = self.connection.provider
         headers = headers or {}
         body = self.make_encryption_body(ssealgorithm, kmsmasterkeyid)
-        if not isinstance(body, bytes):
-            body = body.encode('utf-8')
+        body = body.encode('utf-8')
         headers = configure_checksum_headers(checksum, provider, headers, data=body)
         response = self.connection.make_request('PUT', self.name, data=body,
                 query_args='encryption', headers=headers)
@@ -2795,8 +2790,7 @@ class Bucket(object):
         xml = pab.to_xml()
         md5 = boto.utils.compute_md5(StringIO(xml))
         headers['Content-MD5'] = md5[1]
-        if not isinstance(xml, bytes):
-            xml = xml.encode('utf-8')
+        xml = xml.encode('utf-8')
         headers = configure_checksum_headers(checksum, provider, headers, data=xml)
         response = self.connection.make_request('PUT', self.name, data=xml,
                                                 query_args='publicAccessBlock',
