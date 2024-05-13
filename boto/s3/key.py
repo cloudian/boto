@@ -46,7 +46,7 @@ from boto.exception import BotoClientError
 from boto.exception import StorageDataError
 from boto.exception import PleaseRetryException
 from boto.provider import Provider
-from boto.s3.checksums import cal_checksum, configure_checksum_headers
+from boto.s3.checksums import cal_checksum, set_checksum_header
 from boto.s3.keyfile import KeyFile
 from boto.s3.tagging import Tags
 from boto.s3.user import User
@@ -1763,7 +1763,7 @@ class Key(object):
         if object_lock_legal_hold is not None:
             headers[provider.object_lock_legal_hold_header] = object_lock_legal_hold
         size = size or -1
-        headers = configure_checksum_headers(checksum, provider, headers, fp=fp, size=size)
+        headers = set_checksum_header(checksum, provider, headers, fp=fp, size=size)
         if rewind:
             # caller requests reading from beginning of fp.
             fp.seek(0, os.SEEK_SET)
@@ -2691,7 +2691,7 @@ class Key(object):
         headers['Content-MD5'] = md5[1]
         if not isinstance(data, bytes):
             data = data.encode('utf-8')
-        headers = configure_checksum_headers(checksum, provider, headers, data=data)
+        headers = set_checksum_header(checksum, provider, headers, data=data)
         qargs = 'restore'
         if self.version_id is not None:
             qargs = 'restore&versionId=' + self.version_id
@@ -2741,7 +2741,7 @@ class Key(object):
             tag_str = tag_str.encode('utf-8')
         if self.version_id:
             query_args += '&versionId=%s' % self.version_id
-        headers = configure_checksum_headers(checksum, provider, headers, data=tag_str)
+        headers = set_checksum_header(checksum, provider, headers, data=tag_str)
         response = self.bucket.connection.make_request(
             'PUT', self.bucket.name, self.name,
             data=tag_str,
@@ -2787,7 +2787,7 @@ class Key(object):
         qargs = 'retention'
         if version_id is not None:
             qargs += '&versionId=' + version_id
-        headers = configure_checksum_headers(checksum, provider, headers, data=data)
+        headers = set_checksum_header(checksum, provider, headers, data=data)
         response = self.bucket.connection.make_request(
             'PUT', self.bucket.name, self.name,
             data=data,
@@ -2825,7 +2825,7 @@ class Key(object):
         qargs = 'legal-hold'
         if version_id is not None:
             qargs += '&versionId=' + version_id
-        headers = configure_checksum_headers(checksum, provider, headers, data=data)
+        headers = set_checksum_header(checksum, provider, headers, data=data)
         response = self.bucket.connection.make_request(
             'PUT', self.bucket.name, self.name,
             data=data,

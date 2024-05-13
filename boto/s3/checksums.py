@@ -158,10 +158,15 @@ def cal_checksum(fp=None, size=-1, ctype='crc32', data=None):
         fp.seek(cpos)
     return checksum
 
-def configure_checksum_headers(checksum, provider, headers,
-                               fp=None, size=-1, data=None):
+def set_checksum_header(checksum, provider, headers,
+                        fp=None, size=-1, data=None):
     """
-    Configure headers dict with the checksum algorithm and calculated value.
+    Add checksum headers to headers dict if it is not
+    set yet and checksum is specified.
+    Adding headers:
+        x-amz-sdk-checksum-algorithm: CRC32|CRC32C|SHA1|SHA256
+        x-amz-checksum-{crc32|crc32c|sha1|sha256}: calculated
+                                                   checksum value
 
     :type checksum: string
     :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to
