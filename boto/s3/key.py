@@ -1762,8 +1762,8 @@ class Key(object):
             headers[provider.object_lock_retain_until_date_header] = object_lock_retain_until_date
         if object_lock_legal_hold is not None:
             headers[provider.object_lock_legal_hold_header] = object_lock_legal_hold
-        size = size or -1
-        headers = set_checksum_header(checksum, provider, headers, fp=fp, size=size)
+        csize = size or -1
+        headers = set_checksum_header(checksum, provider, headers, fp=fp, size=csize)
         if rewind:
             # caller requests reading from beginning of fp.
             fp.seek(0, os.SEEK_SET)
