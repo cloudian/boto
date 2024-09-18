@@ -2504,7 +2504,8 @@ class Bucket(object):
                 query_args='encryption', headers=headers)
         body = response.read()
         if response.status == 200:
-            return body
+            kmip_profile = response.getheader('x-gmt-kmip-profile')
+            return kmip_profile, body
         else:
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
