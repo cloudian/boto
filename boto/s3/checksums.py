@@ -15,10 +15,10 @@
 # limitations under the License.
 #
 
-import binascii
 import base64
 import array
 import hashlib
+import zlib
 
 CRC32C_TABEL = (
     0x00000000, 0xf26b8303, 0xe13b70f7, 0x1350f3f4,
@@ -137,7 +137,7 @@ def cal_checksum(fp=None, size=-1, ctype='crc32', data=None):
         cpos = fp.tell()
         rdata = fp.read(size)
     if ctype == 'crc32':
-        checksum = binascii.crc32(rdata, CRC32_INIT) & _MASK
+        checksum = zlib.crc32(rdata, CRC32_INIT) & _MASK
         checksum = base64.b64encode(checksum.to_bytes(4, 'big')).decode('utf-8')
     elif ctype == 'crc32c':
         checksum = crc32c_cal(rdata)
