@@ -256,6 +256,7 @@ class Bucket(object):
             else:
                 k.size = 0
             k.hyperstore = response.getheader('x-gmt-hyperstore')
+            k.kmip_profile = response.getheader('x-gmt-kmip-profile')
             k.name = key_name
             k.handle_version_headers(response)
             k.handle_encryption_headers(response)

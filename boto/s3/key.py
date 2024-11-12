@@ -141,6 +141,7 @@ class Key(object):
         self.filename = None
         self.etag = None
         self.hyperstore = None
+        self.kmip_profile = None
         self.tagging_count = None
         self.mp_parts_count = None
         self.is_latest = False
@@ -432,6 +433,8 @@ class Key(object):
                     self.__dict__[name.lower().replace('-', '_')] = value
                 elif name.lower() == 'x-gmt-hyperstore':
                     self.hyperstore = value
+                elif name.lower() == 'x-gmt-kmip-profile':
+                    self.kmip_profile = value
             self.handle_version_headers(self.resp)
             self.handle_encryption_headers(self.resp)
             self.handle_replication_headers(self.resp)
