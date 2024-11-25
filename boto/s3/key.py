@@ -843,7 +843,7 @@ class Key(object):
                                                    expires_in_absolute,
                                                    version_id)
 
-    def post_file(self, fp, headers, fields, post_policy):
+    def post_file(self, fp, headers, fields, post_policy, headers_on_error=False):
         provider = self.bucket.connection.provider
         try:
             spos = fp.tell()
@@ -972,8 +972,12 @@ class Key(object):
             body = response.read()
 
             if not self.should_retry(response, False):
-                raise provider.storage_response_error(
-                    response.status, response.reason, body)
+                if headers_on_error:
+                    raise provider.storage_response_error(
+                        response.status, response.getheaders(), body)
+                else:
+                    raise provider.storage_response_error(
+                        response.status, response.reason, body)
 
             return response
 
@@ -2009,7 +2013,7 @@ class Key(object):
     def post_contents_from_file(self, fp, headers=None, post_policy=None,
                                 fields={}, policy=None,
                                 reduced_redundancy=False, encrypt_key=None,
-                                checksum=None):
+                                checksum=None, headers_on_error=False):
         """
         Store an object in S3 using the name of the Key object
         as the key in S3 and the contents of the file pointed to
@@ -2053,6 +2057,12 @@ class Key(object):
         :type checksum: string
         :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to create
             the checksum for the object.
+
+        :type headers_on_error: bool
+        :param headers_on_error: If True, the "response headers" will be sent
+            back to the client instead of "reason" with the response status
+            and body on error.
+            Otherwise, the response status, reason and body will be sent.
 
         :rtype: int
         :return: The number of bytes written to the key.
@@ -2103,7 +2113,7 @@ class Key(object):
         fp.seek(spos)
 
         self.post_file(fp, headers=headers, fields=fields,
-                       post_policy=post_policy)
+                       post_policy=post_policy, headers_on_error=headers_on_error)
 
         # return number of bytes written.
         return self.size
