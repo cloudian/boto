@@ -2121,13 +2121,14 @@ class Key(object):
     def post_contents_from_string(self, string_data, headers=None,
                                   post_policy=None, fields={}, policy=None,
                                   reduced_redundancy=False,
-                                  encrypt_key=None):
+                                  encrypt_key=None, headers_on_error=False):
         if not isinstance(string_data, bytes):
             string_data = string_data.encode("utf-8")
         fp = BytesIO(string_data)
         r = self.post_contents_from_file(fp, headers, post_policy, fields,
                                          policy, reduced_redundancy,
-                                         encrypt_key=encrypt_key)
+                                         encrypt_key=encrypt_key,
+                                         headers_on_error=headers_on_error)
         fp.close()
         return r
 
