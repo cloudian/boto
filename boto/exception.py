@@ -75,11 +75,12 @@ class GSPermissionsError(StoragePermissionsError):
 
 
 class BotoServerError(StandardError):
-    def __init__(self, status, reason, body=None, *args):
-        super(BotoServerError, self).__init__(status, reason, body, *args)
+    def __init__(self, status, reason, body=None, headers=None, *args):
+        super(BotoServerError, self).__init__(status, reason, body, headers, *args)
         self.status = status
         self.reason = reason
         self.body = body or ''
+        self.headers = headers or ''
         self.request_id = None
         self.error_code = None
         self._error_message = None
@@ -151,12 +152,18 @@ class BotoServerError(StandardError):
             super(BotoServerError, self).__setattr__(name, value)
 
     def __repr__(self):
-        return '%s: %s %s\n%s' % (self.__class__.__name__,
-                                  self.status, self.reason, self.body)
+        msg = '%s: %s %s\n%s' % (self.__class__.__name__,
+                                 self.status, self.reason, self.body)
+        if len(self.headers) > 0:
+            msg += '\n%s' % self.headers
+        return msg
 
     def __str__(self):
-        return '%s: %s %s\n%s' % (self.__class__.__name__,
-                                  self.status, self.reason, self.body)
+        msg = '%s: %s %s\n%s' % (self.__class__.__name__,
+                                 self.status, self.reason, self.body)
+        if len(self.headers) > 0:
+            msg += '\n%s' % self.headers
+        return msg
 
     def startElement(self, name, attrs, connection):
         pass
@@ -294,9 +301,9 @@ class StorageResponseError(BotoServerError):
     """
     Error in response from a storage service.
     """
-    def __init__(self, status, reason, body=None):
+    def __init__(self, status, reason, body=None, headers=None):
         self.resource = None
-        super(StorageResponseError, self).__init__(status, reason, body)
+        super(StorageResponseError, self).__init__(status, reason, body, headers)
 
     def startElement(self, name, attrs, connection):
         return super(StorageResponseError, self).startElement(
