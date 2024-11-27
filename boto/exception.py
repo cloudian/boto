@@ -75,18 +75,20 @@ class GSPermissionsError(StoragePermissionsError):
 
 
 class BotoServerError(StandardError):
-    def __init__(self, status, reason, body=None, headers=[], *args):
-        super(BotoServerError, self).__init__(status, reason, body, headers, *args)
+    def __init__(self, status, reason, body=None, *args):
+        super(BotoServerError, self).__init__(status, reason, body, *args)
         self.status = status
         self.reason = reason
         self.body = body or ''
-        self.headers = headers
         self.request_id = None
         self.error_code = None
         self._error_message = None
         self.message = ''
         self.box_usage = None
-
+        if len(args) > 0:
+            self.headers = args[0]
+        else:
+            self.headers = None
         if isinstance(self.body, bytes):
             try:
                 self.body = self.body.decode('utf-8')
@@ -154,14 +156,14 @@ class BotoServerError(StandardError):
     def __repr__(self):
         msg = '%s: %s %s\n%s' % (self.__class__.__name__,
                                  self.status, self.reason, self.body)
-        if len(self.headers) > 0:
+        if self.headers is not None:
             msg += '\n%s' % self.headers
         return msg
 
     def __str__(self):
         msg = '%s: %s %s\n%s' % (self.__class__.__name__,
                                  self.status, self.reason, self.body)
-        if len(self.headers) > 0:
+        if self.headers is not None:
             msg += '\n%s' % self.headers
         return msg
 
@@ -301,9 +303,9 @@ class StorageResponseError(BotoServerError):
     """
     Error in response from a storage service.
     """
-    def __init__(self, status, reason, body=None, headers=[]):
+    def __init__(self, status, reason, body=None, *args):
         self.resource = None
-        super(StorageResponseError, self).__init__(status, reason, body, headers)
+        super(StorageResponseError, self).__init__(status, reason, body, *args)
 
     def startElement(self, name, attrs, connection):
         return super(StorageResponseError, self).startElement(

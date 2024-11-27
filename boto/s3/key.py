@@ -974,7 +974,7 @@ class Key(object):
             if not self.should_retry(response, False):
                 raise provider.storage_response_error(
                     response.status, response.reason,
-                    body, headers=response.getheaders())
+                    body, response.getheaders())
 
             return response
 
