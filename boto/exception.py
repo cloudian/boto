@@ -75,7 +75,7 @@ class GSPermissionsError(StoragePermissionsError):
 
 
 class BotoServerError(StandardError):
-    def __init__(self, status, reason, body=None, *args):
+    def __init__(self, status, reason, body=None, *args, headers=None):
         super(BotoServerError, self).__init__(status, reason, body, *args)
         self.status = status
         self.reason = reason
@@ -85,10 +85,7 @@ class BotoServerError(StandardError):
         self._error_message = None
         self.message = ''
         self.box_usage = None
-        if len(args) > 0:
-            self.headers = args[0]
-        else:
-            self.headers = None
+        self.headers = headers
 
         if isinstance(self.body, bytes):
             try:
@@ -155,18 +152,12 @@ class BotoServerError(StandardError):
             super(BotoServerError, self).__setattr__(name, value)
 
     def __repr__(self):
-        msg = '%s: %s %s\n%s' % (self.__class__.__name__,
-                                 self.status, self.reason, self.body)
-        if self.headers is not None:
-            msg += '\n%s' % self.headers
-        return msg
+        return '%s: %s %s\n%s' % (self.__class__.__name__,
+                                  self.status, self.reason, self.body)
 
     def __str__(self):
-        msg = '%s: %s %s\n%s' % (self.__class__.__name__,
-                                 self.status, self.reason, self.body)
-        if self.headers is not None:
-            msg += '\n%s' % self.headers
-        return msg
+        return '%s: %s %s\n%s' % (self.__class__.__name__,
+                                  self.status, self.reason, self.body)
 
     def startElement(self, name, attrs, connection):
         pass
@@ -304,9 +295,9 @@ class StorageResponseError(BotoServerError):
     """
     Error in response from a storage service.
     """
-    def __init__(self, status, reason, body=None, *args):
+    def __init__(self, status, reason, body=None, *args, headers=None):
         self.resource = None
-        super(StorageResponseError, self).__init__(status, reason, body, *args)
+        super(StorageResponseError, self).__init__(status, reason, body, *args, headers=headers)
 
     def startElement(self, name, attrs, connection):
         return super(StorageResponseError, self).startElement(
