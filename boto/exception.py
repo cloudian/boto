@@ -89,6 +89,7 @@ class BotoServerError(StandardError):
             self.headers = args[0]
         else:
             self.headers = None
+
         if isinstance(self.body, bytes):
             try:
                 self.body = self.body.decode('utf-8')
