@@ -75,7 +75,7 @@ class GSPermissionsError(StoragePermissionsError):
 
 
 class BotoServerError(StandardError):
-    def __init__(self, status, reason, body=None, *args):
+    def __init__(self, status, reason, body=None, *args, headers=None):
         super(BotoServerError, self).__init__(status, reason, body, *args)
         self.status = status
         self.reason = reason
@@ -85,6 +85,7 @@ class BotoServerError(StandardError):
         self._error_message = None
         self.message = ''
         self.box_usage = None
+        self.headers = headers
 
         if isinstance(self.body, bytes):
             try:
@@ -294,9 +295,9 @@ class StorageResponseError(BotoServerError):
     """
     Error in response from a storage service.
     """
-    def __init__(self, status, reason, body=None):
+    def __init__(self, status, reason, body=None, *args, headers=None):
         self.resource = None
-        super(StorageResponseError, self).__init__(status, reason, body)
+        super(StorageResponseError, self).__init__(status, reason, body, *args, headers=headers)
 
     def startElement(self, name, attrs, connection):
         return super(StorageResponseError, self).startElement(
