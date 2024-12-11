@@ -2454,7 +2454,7 @@ class Bucket(object):
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
 
-    def make_encryption_body(self, ssealgorithm, kmsmasterkeyid=None, bucketkeyenabled=False):
+    def make_encryption_body(self, ssealgorithm, kmsmasterkeyid=None, bucketkeyenabled=None):
         s = '<?xml version="1.0" encoding="UTF-8"?>\n'
         s += '  <ServerSideEncryptionConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">\n'
         s += '    <Rule>\n'
@@ -2463,12 +2463,13 @@ class Bucket(object):
         if kmsmasterkeyid is not None:
             s += '        <KMSMasterKeyID>%s</KMSMasterKeyID>\n' % kmsmasterkeyid
         s += '      </ApplyServerSideEncryptionByDefault>\n'
-        s += '      <BucketKeyEnabled>%s</BucketKeyEnabled>\n' % bucketkeyenabled
+        if bucketkeyenabled is not None:
+            s += '      <BucketKeyEnabled>%s</BucketKeyEnabled>\n' % bucketkeyenabled
         s += '    </Rule>\n'
         s += '  </ServerSideEncryptionConfiguration>\n'
         return s
 
-    def configure_encryption(self, ssealgorithm, kmsmasterkeyid=None, headers=None, checksum=None, bucketkeyenabled=False):
+    def configure_encryption(self, ssealgorithm, kmsmasterkeyid=None, headers=None, checksum=None, bucketkeyenabled=None):
         """
         Configure encryption for this bucket.
 
