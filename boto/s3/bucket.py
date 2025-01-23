@@ -266,6 +266,7 @@ class Bucket(object):
             k.handle_mp_parts_count_headers(response)
             k.handle_object_lock_headers(response)
             k.handle_checksum_headers(response)
+            k.handle_bucket_key_enabled_headers(response)
             k.handle_addl_headers(response.getheaders())
             return k, response
         else:

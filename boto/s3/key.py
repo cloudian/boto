@@ -142,6 +142,7 @@ class Key(object):
         self.etag = None
         self.hyperstore = None
         self.kmip_profile = None
+        self.bucket_key_enabled = None
         self.tagging_count = None
         self.mp_parts_count = None
         self.is_latest = False
@@ -375,6 +376,14 @@ class Key(object):
         else:
             self.checksum_sha256 = None
 
+    def handle_bucket_key_enabled_headers(self, resp):
+        provider = self.bucket.connection.provider
+        if provider.bucket_key_enabled_header:
+            self.bucket_key_enabled = resp.getheader(
+                provider.bucket_key_enabled_header, None)
+        else:
+            self.bucket_key_enabled = None
+
     def handle_addl_headers(self, headers):
         """
         Used by Key subclasses to do additional, provider-specific
@@ -443,6 +452,7 @@ class Key(object):
             self.handle_mp_parts_count_headers(self.resp)
             self.handle_object_lock_headers(self.resp)
             self.handle_checksum_headers(self.resp)
+            self.handle_bucket_key_enabled_headers(self.resp)
             self.handle_addl_headers(self.resp.getheaders())
 
     def open_write(self, headers=None, override_num_retries=None):
