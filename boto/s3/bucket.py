@@ -842,8 +842,8 @@ class Bucket(object):
             be set to x-amz-bypass-governance-retention header as value
 
         :type checksum: string
-        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to
-            create the checksum for the request body.
+        :param checksum: CRC32|CRC32C|CRC64NVME|SHA1|SHA256. The algorithm
+            used to create the checksum for the request body.
 
         :returns: An instance of MultiDeleteResult
         """
@@ -1060,8 +1060,8 @@ class Bucket(object):
             want to apply to the specified object.
 
         :type checksum: string
-        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to create
-            the checksum for the object.
+        :param checksum: CRC32|CRC32C|CRC64NVME|SHA1|SHA256. The algorithm used
+            to create the checksum for the object.
 
         :type policy: :class:`boto.s3.acl.CannedACLStrings`
         :param policy: A canned ACL policy that will be applied instead
@@ -1104,7 +1104,7 @@ class Bucket(object):
         if object_lock_legal_hold is not None:
             headers[provider.object_lock_legal_hold_header] = object_lock_legal_hold
         if checksum is not None:
-            # "x-amz-checksum-algorithm" header: CRC32|CRC32C|SHA1|SHA256
+            # "x-amz-checksum-algorithm" header: CRC32|CRC32C|CRC64NVME|SHA1|SHA256
             headers[provider.checksum_algorithm_header] = checksum
         response = self.connection.make_request('PUT', self.name, new_key_name,
                                                 headers=headers,
@@ -1437,8 +1437,8 @@ class Bucket(object):
             BucketLogging object.
 
         :type checksum: string
-        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to
-            create the checksum for the request body.
+        :param checksum: CRC32|CRC32C|CRC64NVME|SHA1|SHA256. The algorithm
+            used to create the checksum for the request body.
 
         :rtype: bool
         :return: True if ok or raises an exception.
@@ -1475,8 +1475,8 @@ class Bucket(object):
             the log files which are created.
 
         :type checksum: string
-        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to
-            create the checksum for the request body.
+        :param checksum: CRC32|CRC32C|CRC64NVME|SHA1|SHA256. The algorithm
+            used to create the checksum for the request body.
 
         :rtype: bool
         :return: True if ok or raises an exception.
@@ -1493,8 +1493,8 @@ class Bucket(object):
         Disable logging on a bucket.
 
         :type checksum: string
-        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to
-            create the checksum for the request body.
+        :param checksum: CRC32|CRC32C|CRC64NVME|SHA1|SHA256. The algorithm
+            used to create the checksum for the request body.
 
         :rtype: bool
         :return: True if ok or raises an exception.
@@ -1583,8 +1583,8 @@ class Bucket(object):
             property of the bucket.
 
         :type checksum: string
-        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to
-            create the checksum for the request body.
+        :param checksum: CRC32|CRC32C|CRC64NVME|SHA1|SHA256. The algorithm
+            used to create the checksum for the request body.
 
         """
         provider = self.connection.provider
@@ -1648,8 +1648,8 @@ class Bucket(object):
             to configure for this bucket.
 
         :type checksum: string
-        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to
-            create the checksum for the request body.
+        :param checksum: CRC32|CRC32C|CRC64NVME|SHA1|SHA256. The algorithm
+            used to create the checksum for the request body.
         """
         provider = self.connection.provider
         headers = headers or {}
@@ -1723,8 +1723,8 @@ class Bucket(object):
             to configure for this bucket.
 
         :type checksum: string
-        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to
-            create the checksum for the request body.
+        :param checksum: CRC32|CRC32C|CRC64NVME|SHA1|SHA256. The algorithm
+            used to create the checksum for the request body.
         """
         provider = self.connection.provider
         headers = headers or {}
@@ -2066,8 +2066,8 @@ class Bucket(object):
         :param policy: The JSON policy as a string.
 
         :type checksum: string
-        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to
-            create the checksum for the request body.
+        :param checksum: CRC32|CRC32C|CRC64NVME|SHA1|SHA256. The algorithm
+            used to create the checksum for the request body.
 
         """
         provider = self.connection.provider
@@ -2188,7 +2188,7 @@ class Bucket(object):
                                   object_lock_mode=None,
                                   object_lock_retain_until_date=None,
                                   object_lock_legal_hold=None,
-                                  checksum=None):
+                                  checksum=None, checksum_type=None):
         """
         Start a multipart upload operation.
 
@@ -2245,8 +2245,13 @@ class Bucket(object):
             want to apply to the specified object.
 
         :type checksum: string
-        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to create
-            the checksum for the object.
+        :param checksum: CRC32|CRC32C|CRC64NVME|SHA1|SHA256. The algorithm
+            used to create the checksum for the object.
+
+        :type checksum_type: string
+        :param checksum: COMPOSITE|FULL_OBJECT. Indicates the checksum type
+            that you want S3 Server to use to calculate the object's checksum
+            value.
         """
         query_args = 'uploads'
         provider = self.connection.provider
@@ -2274,6 +2279,8 @@ class Bucket(object):
             headers[provider.object_lock_legal_hold_header] = object_lock_legal_hold
         if checksum is not None:
             headers[provider.checksum_algorithm_header] = checksum
+        if checksum_type is not None:
+            headers[provider.checksum_type_header] = checksum_type
         response = self.connection.make_request('POST', self.name, key_name,
                                                 query_args=query_args,
                                                 headers=headers)
@@ -2292,6 +2299,7 @@ class Bucket(object):
             k = self.key_class(self)
             k.handle_checksum_headers(response)
             resp.checksum_algorithm = k.checksum_algorithm
+            resp.checksum_type = k.checksum_type
             return resp
         else:
             raise self.connection.provider.storage_response_error(
@@ -2483,8 +2491,8 @@ class Bucket(object):
                                encryption
 
         :type checksum: string
-        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to
-            create the checksum for the request body.
+        :param checksum: CRC32|CRC32C|CRC64NVME|SHA1|SHA256. The algorithm
+            used to create the checksum for the request body.
 
         :returns: True if the configuration succeeds or else
                   throws an exception

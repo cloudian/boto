@@ -79,6 +79,8 @@ CHECKSUM_CRC32_HEADER_KEY = 'checksum-crc32-header'
 CHECKSUM_CRC32C_HEADER_KEY = 'checksum-crc32c-header'
 CHECKSUM_SHA1_HEADER_KEY = 'checksum-sha1-header'
 CHECKSUM_SHA256_HEADER_KEY = 'checksum-sha256-header'
+CHECKSUM_CRC64NVME_HEADER_KEY = 'checksum-crc64nvme-header'
+CHECKSUM_TYPE_HEADER_KEY = 'checksum-type-header'
 CHECKSUM_MODE_HEADER_KEY = 'checksum-mode-header'
 
 STORAGE_COPY_ERROR = 'StorageCopyError'
@@ -170,6 +172,8 @@ class Provider(object):
             CHECKSUM_CRC32C_HEADER_KEY: AWS_HEADER_PREFIX + 'checksum-crc32c',
             CHECKSUM_SHA1_HEADER_KEY: AWS_HEADER_PREFIX + 'checksum-sha1',
             CHECKSUM_SHA256_HEADER_KEY: AWS_HEADER_PREFIX + 'checksum-sha256',
+            CHECKSUM_CRC64NVME_HEADER_KEY: AWS_HEADER_PREFIX + 'checksum-crc64nvme',
+            CHECKSUM_TYPE_HEADER_KEY: AWS_HEADER_PREFIX + 'checksum-type',
             CHECKSUM_MODE_HEADER_KEY: AWS_HEADER_PREFIX + 'checksum-mode',
         },
         'google': {
@@ -209,6 +213,8 @@ class Provider(object):
             CHECKSUM_CRC32C_HEADER_KEY: None,
             CHECKSUM_SHA1_HEADER_KEY: None,
             CHECKSUM_SHA256_HEADER_KEY: None,
+            CHECKSUM_CRC64NVME_HEADER_KEY: None,
+            CHECKSUM_TYPE_HEADER_KEY: None,
             CHECKSUM_MODE_HEADER_KEY: None,
         }
     }
@@ -530,6 +536,8 @@ class Provider(object):
         self.checksum_crc32c_header = header_info_map[CHECKSUM_CRC32C_HEADER_KEY]
         self.checksum_sha1_header = header_info_map[CHECKSUM_SHA1_HEADER_KEY]
         self.checksum_sha256_header = header_info_map[CHECKSUM_SHA256_HEADER_KEY]
+        self.checksum_crc64nvme_header = header_info_map[CHECKSUM_CRC64NVME_HEADER_KEY]
+        self.checksum_type_header = header_info_map[CHECKSUM_TYPE_HEADER_KEY]
         self.checksum_mode_header = header_info_map[CHECKSUM_MODE_HEADER_KEY]
 
     def configure_errors(self):
