@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright (c) 2006-2010 Mitch Garnaat http://garnaat.org/
 # Copyright (c) 2010, Eucalyptus Systems, Inc.
@@ -87,6 +87,9 @@ setup(name = "boto",
           "boto.cacerts": ["cacerts.txt"],
           "boto": ["endpoints.json"],
       },
+      install_requires = [
+          "awscrt >= 0.23.8"
+      ],
       license = "MIT",
       platforms = "Posix; MacOS X; Windows",
       classifiers = ["Development Status :: 5 - Production/Stable",

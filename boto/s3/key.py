@@ -172,8 +172,10 @@ class Key(object):
         self.checksum_algorithm = None
         self.checksum_crc32 = None
         self.checksum_crc32c = None
+        self.checksum_crc64nvme = None
         self.checksum_sha1 = None
         self.checksum_sha256 = None
+        self.checksum_type = None
 
     def __repr__(self):
         if self.bucket:
@@ -363,6 +365,12 @@ class Key(object):
                 provider.checksum_crc32c_header, None)
         else:
             self.checksum_crc32c = None
+        # CRC64NVME
+        if provider.checksum_crc64nvme_header:
+            self.checksum_crc64nvme = resp.getheader(
+                provider.checksum_crc64nvme_header, None)
+        else:
+            self.checksum_crc64nvme = None
         # SHA1
         if provider.checksum_sha1_header:
             self.checksum_sha1 = resp.getheader(
@@ -375,6 +383,12 @@ class Key(object):
                 provider.checksum_sha256_header, None)
         else:
             self.checksum_sha256 = None
+        # COMPOSITE|FULL_OBJECT
+        if provider.checksum_type_header:
+            self.checksum_type = resp.getheader(
+                provider.checksum_type_header, None)
+        else:
+            self.checksum_type = None
 
     def handle_bucket_key_enabled_headers(self, resp):
         provider = self.bucket.connection.provider
@@ -667,10 +681,14 @@ class Key(object):
             self.checksum_crc32 = value
         elif name == 'ChecksumCRC32C':
             self.checksum_crc32c = value
+        elif name == 'ChecksumCRC64NVME':
+            self.checksum_crc64nvme = value
         elif name == 'ChecksumSHA1':
             self.checksum_sha1 = value
         elif name == 'ChecksumSHA256':
             self.checksum_sha256 = value
+        elif name == 'ChecksumType':
+            self.checksum_type = value
         else:
             setattr(self, name, value)
 
@@ -1758,8 +1776,8 @@ class Key(object):
             want to apply to the specified object.
 
         :type checksum: string
-        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to create
-            the checksum for the object.
+        :param checksum: CRC32|CRC32C|CRC64NVME|SHA1|SHA256. The algorithm used
+            to create the checksum for the object.
 
         :rtype: int
         :return: The number of bytes written to the key.
@@ -2062,8 +2080,8 @@ class Key(object):
             while at rest in S3.
 
         :type checksum: string
-        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to create
-            the checksum for the object.
+        :param checksum: CRC32|CRC32C|CRC64NVME|SHA1|SHA256. The algorithm
+            used to create the checksum for the object.
 
         :rtype: int
         :return: The number of bytes written to the key.
@@ -2082,13 +2100,13 @@ class Key(object):
             if provider.storage_class_header:
                 fields[provider.storage_class_header] = self.storage_class
         if checksum is not None:
-            # "x-amz-sdk-checksum-algorithm" field: CRC32|CRC32C|SHA1|SHA256
+            # "x-amz-sdk-checksum-algorithm" field: CRC32|CRC32C|CRC64NVME|SHA1|SHA256
             fields[provider.sdk_checksum_algorithm_header] = checksum
             decode_json_data = json.loads(post_policy)
             decode_json_data['conditions'].append(('starts-with', '$%s' % provider.sdk_checksum_algorithm_header, ''))
             # calculate based on the algorithm
             checksum_lower = checksum.lower()
-            if checksum_lower in ['crc32', 'crc32c', 'sha1', 'sha256']:
+            if checksum_lower in ['crc32', 'crc32c', 'crc64nvme', 'sha1', 'sha256']:
                 calculated_checksum = cal_checksum(fp, -1, checksum_lower)
                 if checksum_lower == 'crc32':
                     fields[provider.checksum_crc32_header] = calculated_checksum
@@ -2096,6 +2114,9 @@ class Key(object):
                 elif checksum_lower == 'crc32c':
                     fields[provider.checksum_crc32c_header] = calculated_checksum
                     decode_json_data['conditions'].append(('starts-with', '$%s' % provider.checksum_crc32c_header, ''))
+                elif checksum_lower == 'crc64nvme':
+                    fields[provider.checksum_crc64nvme_header] = calculated_checksum
+                    decode_json_data['conditions'].append(('starts-with', '$%s' % provider.checksum_crc64nvme_header, ''))
                 elif checksum_lower == 'sha1':
                     fields[provider.checksum_sha1_header] = calculated_checksum
                     decode_json_data['conditions'].append(('starts-with', '$%s' % provider.checksum_sha1_header, ''))
@@ -2372,7 +2393,7 @@ class Key(object):
 
         :type checksum_mode: str
         :param checksum_mode: To retrieve the checksum in the response
-            headers of x-amz-checksum-crc32|crc32c|sha1|sha256.
+            headers of x-amz-checksum-crc32|crc32c|crc64nvme|sha1|sha256.
             Valid Values: "ENABLED")
 
         """
@@ -2451,7 +2472,7 @@ class Key(object):
 
         :type checksum_mode: str
         :param checksum_mode: To retrieve the checksum in the response
-            headers of x-amz-checksum-crc32|crc32c|sha1|sha256.
+            headers of x-amz-checksum-crc32|crc32c|crc64nvme|sha1|sha256.
             Valid Values: "ENABLED")
         """
         try:
@@ -2530,7 +2551,7 @@ class Key(object):
 
         :type checksum_mode: str
         :param checksum_mode: To retrieve the checksum in the response
-            headers of x-amz-checksum-crc32|crc32c|sha1|sha256.
+            headers of x-amz-checksum-crc32|crc32c|crc64nvme|sha1|sha256.
             Valid Values: "ENABLED")
 
         :type encoding: str
@@ -2694,8 +2715,8 @@ class Key(object):
             respect to the completion time of the request.
 
         :type checksum: string
-        :param checksum: CRC32|CRC32C|SHA1|SHA256. The algorithm used to create
-            the checksum for the request body.
+        :param checksum: CRC32|CRC32C|CRC64NVME|SHA1|SHA256. The algorithm
+            used to create the checksum for the request body.
 
         """
         provider = self.bucket.connection.provider

@@ -52,8 +52,10 @@ class CompleteMultiPartUpload(object):
         self.encrypted = None
         self.checksum_crc32 = None
         self.checksum_crc32c = None
+        self.checksum_crc64nvme = None
         self.checksum_sha1 = None
         self.checksum_sha256 = None
+        self.checksum_type = None
 
     def __repr__(self):
         return '<CompleteMultiPartUpload: %s.%s>' % (self.bucket_name,
@@ -75,10 +77,14 @@ class CompleteMultiPartUpload(object):
             self.checksum_crc32 = value
         elif name == 'ChecksumCRC32C':
             self.checksum_crc32c = value
+        elif name == 'ChecksumCRC64NVME':
+            self.checksum_crc64nvme = value
         elif name == 'ChecksumSHA1':
             self.checksum_sha1 = value
         elif name == 'ChecksumSHA256':
             self.checksum_sha256 = value
+        elif name == 'ChecksumType':
+            self.checksum_type = value
         else:
             setattr(self, name, value)
 
@@ -93,6 +99,7 @@ class Part(object):
      * size - The size, in bytes, of this part
      * checksum_crc32 - The CRC32 checksum value of this part
      * checksum_crc32c - The CRC32C checksum value of this part
+     * checksum_crc64nvme - The CRC64NVME checksum value of this part
      * checksum_sha1 - The SHA1 checksum value of this part
      * checksum_sha256 - The SHA256 checksum value of this part
     """
@@ -105,6 +112,7 @@ class Part(object):
         self.size = None
         self.checksum_crc32 = None
         self.checksum_crc32c = None
+        self.checksum_crc64nvme = None
         self.checksum_sha1 = None
         self.checksum_sha256 = None
 
@@ -130,6 +138,8 @@ class Part(object):
             self.checksum_crc32 = value
         elif name == 'ChecksumCRC32C':
             self.checksum_crc32c = value
+        elif name == 'ChecksumCRC64NVME':
+            self.checksum_crc64nvme = value
         elif name == 'ChecksumSHA1':
             self.checksum_sha1 = value
         elif name == 'ChecksumSHA256':
@@ -171,6 +181,7 @@ class MultiPartUpload(object):
         self.is_truncated = False
         self._parts = None
         self.checksum_algorithm = None
+        self.checksum_type = None
 
     def __repr__(self):
         return '<MultiPartUpload %s>' % self.key_name
@@ -188,6 +199,8 @@ class MultiPartUpload(object):
                 s += '    <ChecksumCRC32>%s</ChecksumCRC32>\n' % part.checksum_crc32
             if part.checksum_crc32c:
                 s += '    <ChecksumCRC32C>%s</ChecksumCRC32C>\n' % part.checksum_crc32c
+            if part.checksum_crc64nvme:
+                s += '    <ChecksumCRC64NVME>%s</ChecksumCRC64NVME>\n' % part.checksum_crc64nvme
             if part.checksum_sha1:
                 s += '    <ChecksumSHA1>%s</ChecksumSHA1>\n' % part.checksum_sha1
             if part.checksum_sha256:
@@ -233,6 +246,8 @@ class MultiPartUpload(object):
             self.initiated = value
         elif name == 'ChecksumAlgorithm':
             self.checksum_algorithm = value
+        elif name == 'ChecksumType':
+            self.checksum_type = value
         else:
             setattr(self, name, value)
 
