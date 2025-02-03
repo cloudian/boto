@@ -1143,7 +1143,7 @@ class IAMConnection(AWSQueryConnection):
         else:
 
             for tld, policy in DEFAULT_POLICY_DOCUMENTS.items():
-                if tld is 'default':
+                if tld == 'default':
                     # Skip the default. We'll fall back to it if we don't find
                     # anything.
                     continue
