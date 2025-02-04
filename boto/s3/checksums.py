@@ -19,6 +19,7 @@ import base64
 import hashlib
 
 from awscrt import checksums
+from boto import config
 
 # Caller should specify at least 'fp' or 'data'
 # and 'data' is higher priority to use for checksum calculation.
@@ -107,4 +108,17 @@ def set_checksum_header(checksum, provider, headers,
             headers[provider.checksum_sha1_header] = calculated_checksum
         elif checksum_lower == 'sha256' and provider.checksum_sha256_header not in headers:
             headers[provider.checksum_sha256_header] = calculated_checksum
+        # /etc/boto.cfg or ~/.boto file
+        # always_send_md5: True/False(Default: False)
+        #                  True : always send Content-MD5 header
+        #                  False: not send Content-MD5 header if checksum header exists
+        if not config.getbool('Boto', 'always_send_md5', False):
+            checksum_headers = {provider.checksum_crc32_header,
+                                provider.checksum_crc32c_header,
+                                provider.checksum_crc64nvme_header,
+                                provider.checksum_sha1_header,
+                                provider.checksum_sha256_header}
+            if len(set(headers.keys()).intersection(checksum_headers)) > 0:
+                if 'Content-MD5' in headers:
+                    del headers['Content-MD5']
     return headers
