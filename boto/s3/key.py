@@ -1136,7 +1136,8 @@ class Key(object):
         return (top, bottom)
 
     def send_file(self, fp, headers=None, cb=None, num_cb=10,
-                  query_args=None, chunked_transfer=False, size=None):
+                  query_args=None, chunked_transfer=False, size=None,
+                  checksum=None):
         """
         Upload a file to a key into a bucket on S3.
 
@@ -1176,14 +1177,20 @@ class Key(object):
             up into different ranges to be uploaded. If not specified,
             the default behaviour is to read all bytes from the file
             pointer. Less bytes may be available.
+
+        :type checksum: string
+        :param checksum: CRC32|CRC32C|CRC64NVME|SHA1|SHA256. The algorithm used
+            to create the checksum for the object.
+
         """
         self._send_file_internal(fp, headers=headers, cb=cb, num_cb=num_cb,
                                  query_args=query_args,
-                                 chunked_transfer=chunked_transfer, size=size)
+                                 chunked_transfer=chunked_transfer, size=size,
+                                 checksum=checksum)
 
     def _send_file_internal(self, fp, headers=None, cb=None, num_cb=10,
                             query_args=None, chunked_transfer=False, size=None,
-                            hash_algs=None):
+                            hash_algs=None, checksum=None):
         provider = self.bucket.connection.provider
         try:
             spos = fp.tell()
@@ -1499,6 +1506,7 @@ class Key(object):
 
         headers['Expect'] = '100-Continue'
         headers = boto.utils.merge_meta(headers, self.metadata, provider)
+        headers = set_checksum_header(checksum, provider, headers, fp=fp, size=size)
         resp = self.bucket.connection.make_request(
             'PUT',
             self.bucket.name,
@@ -1794,8 +1802,6 @@ class Key(object):
             headers[provider.object_lock_retain_until_date_header] = object_lock_retain_until_date
         if object_lock_legal_hold is not None:
             headers[provider.object_lock_legal_hold_header] = object_lock_legal_hold
-        csize = size or -1
-        headers = set_checksum_header(checksum, provider, headers, fp=fp, size=csize)
         if rewind:
             # caller requests reading from beginning of fp.
             fp.seek(0, os.SEEK_SET)
@@ -1893,7 +1899,8 @@ class Key(object):
 
             self.send_file(fp, headers=headers, cb=cb, num_cb=num_cb,
                            query_args=query_args,
-                           chunked_transfer=chunked_transfer, size=size)
+                           chunked_transfer=chunked_transfer, size=size,
+                           checksum=checksum)
             # return number of bytes written.
             return self.size
 
