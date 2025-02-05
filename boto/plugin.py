@@ -37,7 +37,13 @@ The actual interface is duck typed.
 """
 
 import glob
-import imp
+#ozaint
+import sys
+PY312 = sys.version_info[0:2] >= (3, 12)
+if PY312:
+    import importlib as imp
+else:
+    import imp
 import os.path
 
 
