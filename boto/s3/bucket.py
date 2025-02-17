@@ -1206,7 +1206,7 @@ class Bucket(object):
                 response.status, response.reason, body)
 
     def set_subresource(self, subresource, value, key_name='', headers=None,
-                        version_id=None):
+                        version_id=None, checksum=None):
         """
         Set a subresource for a bucket or key.
 
@@ -1227,9 +1227,14 @@ class Bucket(object):
         :param version_id: Optional. The version id of the key to
             operate on. If not specified, operate on the newest
             version.
+
+        :type checksum: string
+        :param checksum: CRC32|CRC32C|CRC64NVME|SHA1|SHA256. The algorithm
+            used to create the checksum for the request body.
         """
         if not subresource:
             raise TypeError('set_subresource called with subresource=None')
+        provider = self.connection.provider
         query_args = subresource
         if headers is None:
             headers = {}
@@ -1239,6 +1244,7 @@ class Bucket(object):
             query_args += '&versionId=%s' % version_id
         if not isinstance(value, bytes):
             value = value.encode('utf-8')
+        headers = set_checksum_header(checksum, provider, headers, data=value)
         response = self.connection.make_request('PUT', self.name, key_name,
                                                 data=value,
                                                 query_args=query_args,
