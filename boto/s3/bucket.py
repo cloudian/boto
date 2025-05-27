@@ -1962,6 +1962,360 @@ class Bucket(object):
         l.append('.'.join(self.connection.host.split('.')[-2:]))
         return '.'.join(l)
 
+    def put_metrics_configuration(self, id, metrics_config, headers=None):
+        """
+        Configure Bucket Metrics Configuration for this bucket.
+
+        :type id: str
+        :param id: The ID used to identify the metrics configuration.
+
+        :type metrics_config: str
+        :param metrics_config: The metrics configuration
+            as a string.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+        """
+        if not isinstance(metrics_config, bytes):
+            metrics_config = metrics_config.encode('utf-8')
+        query_args = 'metrics'
+        query_args += '&id=%s' % id
+        response = self.connection.make_request('PUT', self.name,
+                                                data=metrics_config,
+                                                query_args=query_args,
+                                                headers=headers)
+        body = response.read()
+        if response.status != 200:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def get_metrics_configuration(self, id, headers=None):
+        """
+        Returns a metrics configuration (identified by the
+            metrics configuration ID) from the bucket.
+
+        :type id: str
+        :param id: The ID used to identify the metrics configuration.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+        """
+        query_args = 'metrics'
+        query_args += '&id=%s' % id
+        response = self.connection.make_request('GET', self.name,
+                query_args=query_args, headers=headers)
+        body = response.read()
+        if response.status == 200:
+            return body
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def delete_metrics_configuration(self, id, headers=None):
+        """
+        Deletes a metrics configuration (identified by
+            the metrics ID) from the bucket.
+
+        :type id: str
+        :param id: The ID used to identify the metrics configuration.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+        """
+        query_args = 'metrics'
+        query_args += '&id=%s' % id
+        response = self.connection.make_request('DELETE', self.name,
+                                                query_args=query_args,
+                                                headers=headers)
+        body = response.read()
+        if response.status != 204:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def list_metrics_configurations(self, continuation_token=None,
+                                                headers=None):
+        """
+        Returns a list of metrics configurations for the bucket.
+        You can have up to 1,000 analytics configurations per bucket.
+
+        This action supports list pagination and does not return more
+        than 100 configurations at a time.
+        Always check the IsTruncated element in the response.
+        If there are no more configurations to list, IsTruncated is set to false.
+        If there are more configurations to list, IsTruncated is set to true,
+        and there is a value in NextContinuationToken.
+        You use the NextContinuationToken value to continue the pagination of
+        the list by passing the value in continuation-token in the request
+        to GET the next page.
+
+        :type continuation_token: str
+        :param continuation_token: The marker used to continue a
+            metrics configuration listing that has been truncated.
+            Use the NextContinuationToken from a previously truncated list
+            response to continue the listing.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+        """
+        query_args = 'metrics'
+        if continuation_token is not None:
+            query_args += '&continuation-token=%s' % continuation_token
+        response = self.connection.make_request('GET', self.name,
+                query_args=query_args, headers=headers)
+        body = response.read()
+        if response.status == 200:
+            return body
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def put_intelligent_tiering_configuration(self, id, intelligent_tiering_config,
+                                              headers=None):
+        """
+        Configure Bucket Intelligent-Tiering Configuration for this bucket.
+
+        :type id: str
+        :param id: The ID used to identify the intelligent-tiering configuration.
+
+        :type intelligent_tiering_config: str
+        :param intelligent_tiering_config: The intelligent-tiering configuration
+            as a string.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+        """
+        if not isinstance(intelligent_tiering_config, bytes):
+            intelligent_tiering_config = intelligent_tiering_config.encode('utf-8')
+        query_args = 'intelligent-tiering'
+        query_args += '&id=%s' % id
+        response = self.connection.make_request('PUT', self.name,
+                                                data=intelligent_tiering_config,
+                                                query_args=query_args,
+                                                headers=headers)
+        body = response.read()
+        if response.status != 200:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def get_intelligent_tiering_configuration(self, id, headers=None):
+        """
+        Returns an intelligent-tiering configuration (identified by the
+            intelligent-tiering configuration ID) from the bucket.
+
+        :type id: str
+        :param id: The ID used to identify the analytics configuration.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+        """
+        query_args = 'intelligent-tiering'
+        query_args += '&id=%s' % id
+        response = self.connection.make_request('GET', self.name,
+                query_args=query_args, headers=headers)
+        body = response.read()
+        if response.status == 200:
+            return body
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def delete_intelligent_tiering_configuration(self, id, headers=None):
+        """
+        Deletes an intelligent-tiering configuration (identified by
+            the intelligent-tiering ID) from the bucket.
+
+        :type id: str
+        :param id: The ID used to identify the intelligent-tiering configuration.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+        """
+        query_args = 'intelligent-tiering'
+        query_args += '&id=%s' % id
+        response = self.connection.make_request('DELETE', self.name,
+                                                query_args=query_args,
+                                                headers=headers)
+        body = response.read()
+        if response.status != 204:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def list_intelligent_tiering_configurations(self, continuation_token=None,
+                                                headers=None):
+        """
+        Returns a list of intelligent-tiering configurations for the bucket.
+        You can have up to 1,000 analytics configurations per bucket.
+
+        This action supports list pagination and does not return more
+        than 100 configurations at a time.
+        Always check the IsTruncated element in the response.
+        If there are no more configurations to list, IsTruncated is set to false.
+        If there are more configurations to list, IsTruncated is set to true,
+        and there is a value in NextContinuationToken.
+        You use the NextContinuationToken value to continue the pagination of
+        the list by passing the value in continuation-token in the request
+        to GET the next page.
+
+        :type continuation_token: str
+        :param continuation_token: The marker used to continue an
+            intelligent-tiering configuration listing that has been truncated.
+            Use the NextContinuationToken from a previously truncated list
+            response to continue the listing.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+        """
+        query_args = 'intelligent-tiering'
+        if continuation_token is not None:
+            query_args += '&continuation-token=%s' % continuation_token
+        response = self.connection.make_request('GET', self.name,
+                query_args=query_args, headers=headers)
+        body = response.read()
+        if response.status == 200:
+            return body
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def put_analytics_configuration(self, id, analytics_config, headers=None):
+        """
+        Configure Bucket Analytics Configuration for this bucket.
+
+        :type id: str
+        :param id: The ID used to identify the analytics configuration.
+
+        :type analytics_config: str
+        :param analytics_config: The analytics configuration as a string.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+        """
+        if not isinstance(analytics_config, bytes):
+            analytics_config = analytics_config.encode('utf-8')
+        query_args = 'analytics'
+        query_args += '&id=%s' % id
+        response = self.connection.make_request('PUT', self.name,
+                                                data=analytics_config,
+                                                query_args=query_args,
+                                                headers=headers)
+        body = response.read()
+        if response.status != 200:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def get_analytics_configuration(self, id, headers=None):
+        """
+        Returns an analytics configuration (identified by the analytics configuration ID)
+        from the bucket.
+
+        :type id: str
+        :param id: The ID used to identify the analytics configuration.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+        """
+        query_args = 'analytics'
+        query_args += '&id=%s' % id
+        response = self.connection.make_request('GET', self.name,
+                query_args=query_args, headers=headers)
+        body = response.read()
+        if response.status == 200:
+            return body
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def delete_analytics_configuration(self, id, headers=None):
+        """
+        Deletes an analytics configuration (identified by the analytics ID)
+        from the bucket.
+
+        :type id: str
+        :param id: The ID used to identify the analytics configuration.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+        """
+        query_args = 'analytics'
+        query_args += '&id=%s' % id
+        response = self.connection.make_request('DELETE', self.name,
+                                                query_args=query_args,
+                                                headers=headers)
+        body = response.read()
+        if response.status != 204:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def list_analytics_configurations(self, continuation_token=None, headers=None):
+        """
+        Returns a list of analytics configurations for the bucket.
+        You can have up to 1,000 analytics configurations per bucket.
+
+        This action supports list pagination and does not return more
+        than 100 configurations at a time.
+        Always check the IsTruncated element in the response.
+        If there are no more configurations to list, IsTruncated is set to false.
+        If there are more configurations to list, IsTruncated is set to true,
+        and there is a value in NextContinuationToken.
+        You use the NextContinuationToken value to continue the pagination of
+        the list by passing the value in continuation-token in the request
+        to GET the next page.
+
+        :type continuation_token: str
+        :param continuation_token: The marker used to continue an analytics
+            configuration listing that has been truncated.
+            Use the NextContinuationToken from a previously truncated list
+            response to continue the listing.
+
+        :type headers: dict
+        :param headers: Additional HTTP headers to include in the request.
+        """
+        query_args = 'analytics'
+        if continuation_token is not None:
+            query_args += '&continuation-token=%s' % continuation_token
+        response = self.connection.make_request('GET', self.name,
+                query_args=query_args, headers=headers)
+        body = response.read()
+        if response.status == 200:
+            return body
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def get_accelerate_configuration(self, headers=None):
+        """
+        Returns the accelerate configuration associated with the bucket.
+        """
+        response = self.connection.make_request('GET', self.name,
+                query_args='accelerate', headers=headers)
+        body = response.read()
+        if response.status == 200:
+            return body
+        else:
+            raise self.connection.provider.storage_response_error(
+                response.status, response.reason, body)
+
+    def put_accelerate_configuration(self, accelerate_config, headers=None, checksum=None):
+        """
+        Add or replace the accelerate configuration associated with the bucket.
+
+        :type accelerate_config: str
+        :param accelerate_config: The accelerate configuration as a string.
+        """
+        provider = self.connection.provider
+        headers = headers or {}
+        if not isinstance(accelerate_config, bytes):
+            accelerate_config = accelerate_config.encode('utf-8')
+        headers = set_checksum_header(checksum, provider, headers, data=accelerate_config)
+        response = self.connection.make_request('PUT', self.name,
+                                                data=accelerate_config,
+                                                query_args='accelerate',
+                                                headers=headers)
+        body = response.read()
+        if response.status != 200:
+            raise provider.storage_response_error(
+                response.status, response.reason, body)
+
     def get_notification(self, headers=None):
         """
         Returns the notification configuration associated with the bucket.
