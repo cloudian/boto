@@ -1157,9 +1157,9 @@ class AWSQueryConnection(AWSAuthConnection):
     def get_utf8_value(self, value):
         return boto.utils.get_utf8_value(value)
 
-    def make_request(self, action, params=None, path='/', verb='GET'):
+    def make_request(self, action, params=None, path='/', headers=None, verb='GET'):
         http_request = self.build_base_http_request(verb, path, None,
-                                                    params, {}, '',
+                                                    params, headers, '',
                                                     self.host)
         if action:
             http_request.params['Action'] = action
