@@ -1237,11 +1237,11 @@ class AWSQueryConnection(AWSAuthConnection):
             boto.log.error('%s' % body)
             raise self.ResponseError(response.status, response.reason, body)
 
-    def get_object(self, action, params, cls, path='/',
+    def get_object(self, action, params, cls, path='/', headers=None,
                    parent=None, verb='GET'):
         if not parent:
             parent = self
-        response = self.make_request(action, params, path, verb)
+        response = self.make_request(action, params, path, headers, verb)
         body = response.read()
         boto.log.debug(body)
         if not body:

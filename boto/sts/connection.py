@@ -256,20 +256,21 @@ class STSConnection(AWSQueryConnection):
         return self.get_object('GetFederationToken', params,
                                 FederationToken, verb='POST')
 
-    def get_caller_identity(self):
+    def get_caller_identity(self, headers=None):
         """
         Returns an Identity object with details about the IAM user or role
         whose credentials are used to call the operation. This operaton does
         not have any parameters.
         """
-        return self.get_object('GetCallerIdentity', {}, Identity)
+        return self.get_object('GetCallerIdentity', {}, Identity, headers=headers)
 
     def assume_role(self, role_arn, role_session_name, policy=None,
                     duration_seconds=None, external_id=None,
                     mfa_serial_number=None,
                     mfa_token=None,
                     policy_arns=[],
-                    tags={}, transitive_tag_keys=[]):
+                    tags={}, transitive_tag_keys=[],
+                    headers=None):
         """
         Returns a set of temporary security credentials (consisting of
         an access key ID, a secret access key, and a security token)
@@ -438,10 +439,11 @@ class STSConnection(AWSQueryConnection):
             for ttk in transitive_tag_keys:
                 params['TransitiveTagKeys.member.%d' % idx] = ttk
                 idx += 1
-        return self.get_object('AssumeRole', params, AssumedRole, verb='POST')
+        return self.get_object('AssumeRole', params, AssumedRole, headers=headers, verb='POST')
 
     def assume_role_with_saml(self, role_arn, principal_arn, saml_assertion,
-                              policy=None, duration_seconds=None):
+                              policy=None, duration_seconds=None,
+                              headers=None):
         """
         Returns a set of temporary security credentials for users who
         have been authenticated via a SAML authentication response.
@@ -547,7 +549,7 @@ class STSConnection(AWSQueryConnection):
         if duration_seconds is not None:
             params['DurationSeconds'] = duration_seconds
         return self.get_object('AssumeRoleWithSAML', params, AssumedRoleWithSAML,
-                               verb='POST')
+                               headers=headers, verb='POST')
 
     def assume_role_with_web_identity(self, role_arn, role_session_name,
                                       web_identity_token, provider_id=None,
