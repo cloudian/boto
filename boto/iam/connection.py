@@ -2483,19 +2483,24 @@ class IAMConnection(AWSQueryConnection):
         params = {'AccessKey': akey}
         return self.get_rbac_response('GetCloudianUserCredentials', params)
 
-    def get_cloudian_user_credentials_list(self, gid=None, uid=None, userid=None, rootonly=None):
+    def get_cloudian_user_credentials_list(self, gid=None, uid=None, cuid=None, rootonly=None):
         params = {}
-        if userid is not None:
+        if cuid is not None:
             # CanonicalUserId
-            params['CanonicalUserId'] = userid
+            params['CanonicalUserId'] = cuid
         elif gid is not None and uid is not None:
             params = {'GroupId': gid, 'UserId': uid}
         if rootonly is not None:
             params['RootAccountOnly'] = rootonly
         return self.get_rbac_response('GetCloudianUserCredentialsList', params)
 
-    def get_cloudian_user_credentials_list_active(self, gid, uid):
-        params = {'GroupId': gid, 'UserId': uid}
+    def get_cloudian_user_credentials_list_active(self, gid=None, uid=None, cuid=None):
+        params = {}
+        if cuid is not None:
+            # CanonicalUserId
+            params['CanonicalUserId'] = cuid
+        elif gid is not None and uid is not None:
+            params = {'GroupId': gid, 'UserId': uid}
         return self.get_rbac_response('GetCloudianUserCredentialsListActive', params)
 
     def get_cloudian_qos_limit(self, gid, uid, region=None):
