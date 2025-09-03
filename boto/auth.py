@@ -589,12 +589,24 @@ class S3HmacAuthV4Handler(HmacAuthV4Handler, AuthHandler):
     def canonical_uri(self, http_request):
         # S3 does **NOT** do path normalization that SigV4 typically does.
         # Urlencode the path, **NOT** ``auth_path`` (because vhosting).
-        path = urllib.parse.urlparse(http_request.path)
+
+        # When calling urllib.parse.urlparse with '//hoge', `path` of ParseResult
+        # is not set as expected.
+        # >>> path = '//hoge'
+        # >>> parsed = urlparse(path)
+        # >>> parsed
+        # ParseResult(scheme='', netloc='hoge', path='', params='', query='', fragment='')
+        # >>>
+        # `http_request.path` is already set to the path to the object here.
+        # e.g. If the object name is 'hoge', then it's set to '/hoge'.
+        #      If the object name is '/hoge', then it's set to '//hoge'.
+        # No need to parse http_request.path here.
+        path = http_request.path
         # Because some quoting may have already been applied, let's back it out.
-        if six.PY2 and not isinstance(path.path, bytes):
-            unquoted = urllib.parse.unquote(path.path.encode('utf-8'))
+        if six.PY2 and not isinstance(path, bytes):
+            unquoted = urllib.parse.unquote(path.encode('utf-8'))
         else:
-            unquoted = urllib.parse.unquote(path.path)
+            unquoted = urllib.parse.unquote(path)
         # Requote, this time addressing all characters.
         encoded = urllib.parse.quote(unquoted, '/~')
         return encoded
