@@ -589,7 +589,22 @@ class S3HmacAuthV4Handler(HmacAuthV4Handler, AuthHandler):
     def canonical_uri(self, http_request):
         # S3 does **NOT** do path normalization that SigV4 typically does.
         # Urlencode the path, **NOT** ``auth_path`` (because vhosting).
-        path = urllib.parse.urlparse(http_request.path)
+
+        # `urlparse` is designed to interpret // as the start of
+        # a network location (netloc). It's following the standard URL format:
+        #
+        # scheme://netloc/path;parameters?query#fragment
+        #
+        # So if http_request.path is set to '//a', `urlparse` will assume
+        # - No scheme
+        # - //   => This signals that a network location is about to begin
+        # - a    => a network location(netloc)
+        # - path => empty
+        #
+        # By explicitly adding 'scheme://' to http_request.path, the parser
+        # correctly identifies the '//a' as the path, not the netloc.
+        parse_path = 'scheme://' + http_request.path
+        path = urllib.parse.urlparse(parse_path)
         # Because some quoting may have already been applied, let's back it out.
         if six.PY2 and not isinstance(path.path, bytes):
             unquoted = urllib.parse.unquote(path.path.encode('utf-8'))
