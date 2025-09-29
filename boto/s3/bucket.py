@@ -2671,8 +2671,7 @@ class Bucket(object):
         Complete a multipart upload operation.
         """
         query_args = 'uploadId=%s' % upload_id
-        if headers is None:
-            headers = {}
+        headers = headers or {}
         headers['Content-Type'] = 'text/xml'
         response = self.connection.make_request('POST', self.name, key_name,
                                                 query_args=query_args,
