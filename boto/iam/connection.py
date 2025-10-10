@@ -2393,6 +2393,31 @@ class IAMConnection(AWSQueryConnection):
             params, headers=headers,
             list_marker='AttachedPolicies')
 
+    def list_ssh_public_keys(self, user_name, marker=None, max_items=None,
+                             headers=None):
+        """
+        List SSH public keys.
+
+        :type user_name: string
+        :param user_name: The name of the IAM user to list SSH public keys for.
+
+        :type marker: string
+        :param marker: A marker used for pagination (received from previous
+            accesses)
+
+        :type max_items: int
+        :param max_items: Send only max_items; allows paginations
+        """
+        params = {'UserName': user_name}
+        if marker is not None:
+            params['Marker'] = marker
+        if max_items is not None:
+            params['MaxItems'] = max_items
+        return self.get_response(
+            'ListSSHPublicKeys',
+            params, headers=headers,
+            list_marker='SSHPublicKeys')
+
     def simulate_principal_policy(self, policy_source_arn, action_names,
                                   resource_arns=[], marker=None,
                                   max_items=None, headers=None):
