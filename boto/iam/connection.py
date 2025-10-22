@@ -996,10 +996,10 @@ class IAMConnection(AWSQueryConnection):
                                  headers=headers)
 
     #
-    # Login Profiles
+    # Login Profile
     #
 
-    def get_login_profiles(self, user_name, headers=None):
+    def get_login_profile(self, user_name, headers=None):
         """
         Retrieves the login profile for the specified user.
 
@@ -1012,6 +1012,7 @@ class IAMConnection(AWSQueryConnection):
                                  headers=headers)
 
     def create_login_profile(self, user_name, password,
+                             password_reset_required=None,
                              headers=None):
         """
         Creates a login profile for the specified user, give the user the
@@ -1023,9 +1024,16 @@ class IAMConnection(AWSQueryConnection):
         :type password: string
         :param password: The new password for the user
 
+        :type password_reset_required: bool
+        :param password_reset_required: Allows this new password to
+             be used only once by requiring the specified IAM user to
+             set a new password on next sign-in
+
         """
         params = {'UserName': user_name,
                   'Password': password}
+        if password_reset_required is not None and type(password_reset_required) is bool:
+            params['PasswordResetRequired'] = str(password_reset_required).lower()
         return self.get_response('CreateLoginProfile', params,
                                  headers=headers)
 
@@ -1041,7 +1049,9 @@ class IAMConnection(AWSQueryConnection):
         return self.get_response('DeleteLoginProfile', params,
                                  headers=headers)
 
-    def update_login_profile(self, user_name, password, headers=None):
+    def update_login_profile(self, user_name, password,
+                             password_reset_required=None,
+                             headers=None):
         """
         Resets the password associated with the user's login profile.
 
@@ -1051,10 +1061,32 @@ class IAMConnection(AWSQueryConnection):
         :type password: string
         :param password: The new password for the user
 
+        :type password_reset_required: bool
+        :param password_reset_required: Allows this new password to
+             be used only once by requiring the specified IAM user to
+             set a new password on next sign-in
+
         """
         params = {'UserName': user_name,
                   'Password': password}
+        if password_reset_required is not None and type(password_reset_required) is bool:
+            params['PasswordResetRequired'] = str(password_reset_required).lower()
         return self.get_response('UpdateLoginProfile', params,
+                                 headers=headers)
+
+    def change_password(self, old_password, new_password, headers=None):
+        """
+        Changes the password of the IAM user who is calling this operation.
+
+        :type old_password: string
+        :param old_password: The IAM user's current password
+
+        :type new_password: string
+        :param new_password: The IAM user's new password
+
+        """
+        params = {'OldPassword': old_password, 'NewPassword': new_password}
+        return self.get_response('ChangePassword', params,
                                  headers=headers)
 
     def create_account_alias(self, alias, headers=None):
