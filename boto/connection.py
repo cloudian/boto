@@ -857,9 +857,12 @@ class AWSAuthConnection(object):
         else:
             # Fallback for old Python without ssl.wrap_socket
             if hasattr(http_client, 'ssl'):
+
                 ctx = ssl.create_default_context()
-                ctx.check_hostname = False
-                ctx.verify_mode = ssl.CERT_NONE
+
+                if self.https_validate_certificates is False :
+                    ctx.check_hostname = False
+                    ctx.verify_mode = ssl.CERT_NONE
                 sslSock = ctx.wrap_socket(sock, server_hostname=host)
                 conn = http_client.HTTPSConnection(host, port, context=ctx)
                 conn.sock = sslSock
