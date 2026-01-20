@@ -879,8 +879,9 @@ class AWSAuthConnection(object):
         if host is None:
             host = self.server_name()
         else:
-            # Include port if it's non-standard
-            if self.port != PORTS_BY_SECURITY[self.is_secure]:
+            # S3 connection adds the ":" by default.
+            # Only add port if host doesn't already contain it and port is non-standard
+            if ':' not in host and self.port != PORTS_BY_SECURITY[self.is_secure]:
                 host = '%s:%d' % (host, self.port)
         path = self.protocol + '://' + host + path
 
