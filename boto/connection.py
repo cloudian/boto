@@ -876,7 +876,14 @@ class AWSAuthConnection(object):
         return h
 
     def prefix_proxy_to_path(self, path, host=None):
-        path = self.protocol + '://' + (host or self.server_name()) + path
+        if host is None:
+            host = self.server_name()
+        else:
+            # Include port if it's non-standard
+            if self.port != PORTS_BY_SECURITY[self.is_secure]:
+                host = '%s:%d' % (host, self.port)
+        path = self.protocol + '://' + host + path
+
         return path
 
     def get_proxy_auth_header(self):
