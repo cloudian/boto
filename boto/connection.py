@@ -885,7 +885,6 @@ class AWSAuthConnection(object):
         path = self.protocol + '://' + host + path
         return path
 
-
     def get_proxy_auth_header(self):
         auth = encodebytes(self.proxy_user + ':' + self.proxy_pass)
         return {'Proxy-Authorization': 'Basic %s' % auth}
