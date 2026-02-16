@@ -436,20 +436,18 @@ class S3Connection(AWSAuthConnection):
                                                   bucket, key) + query_part
 
     def get_all_buckets(self, max_buckets=None, continuation_token=None,
-                        headers=None, shared=None):
-        query_args = None
+                        prefix=None, bucket_region=None, headers=None,
+                        shared=None):
+        params = {
+                'max-buckets': max_buckets,
+                'continuation-token': continuation_token,
+                'prefix': prefix,
+                'bucket-region': bucket_region,
+        }
+        query_list = [f"{k}={v}" for k, v in params.items() if v is not None]
         if shared is not None:
-            query_args = 'shared'
-        if max_buckets is not None:
-            if query_args is not None:
-                query_args += '&max-buckets=%s' % max_buckets
-            else:
-                query_args = 'max-buckets=%s' % max_buckets
-        if continuation_token is not None:
-            if query_args is not None:
-                query_args += '&continuation-token=%s' % continuation_token
-            else:
-                query_args = 'continuation-token=%s' % continuation_token
+            query_list.insert(0, 'shared')
+        query_args = "&".join(query_list) if query_list else None
         response = self.make_request('GET', headers=headers,
                                             query_args=query_args)
         body = response.read()
