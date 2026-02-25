@@ -440,9 +440,9 @@ class S3Connection(AWSAuthConnection):
                         shared=None):
         params = {
                 'max-buckets': max_buckets,
-                'continuation-token': continuation_token,
-                'prefix': prefix,
-                'bucket-region': bucket_region,
+                'continuation-token': urllib.parse.quote(continuation_token) if continuation_token else None,
+                'prefix': urllib.parse.quote(prefix) if prefix else None,
+                'bucket-region': urllib.parse.quote(bucket_region) if bucket_region else None,
         }
         query_list = [f"{k}={v}" for k, v in params.items() if v is not None]
         if shared is not None:
