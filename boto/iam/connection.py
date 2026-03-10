@@ -1693,6 +1693,314 @@ class IAMConnection(AWSQueryConnection):
                                   'PolicyDocument': policy_document},
                                  headers=headers)
 
+    def create_open_id_connect_provider(self, url, client_ids,
+                                        tags=None, thumbprints=None,
+                                        headers=None):
+        """
+        Creates an IAM entity to describe an identity provider (IdP) that
+        supports OpenID Connect (OIDC).
+
+        The OIDC provider that you create with this operation can be used as
+        a principal in a role’s trust policy. Such a policy establishes a
+        trust relationship between Amazon Web Services and the OIDC provider.
+
+
+        If you are using an OIDC identity provider from Google, Facebook,
+        or Amazon Cognito, you don’t need to create a separate IAM
+        identity provider. These OIDC identity providers are already
+        built-in to Amazon Web Services and are available for your use.
+        Instead, you can move directly to creating new roles using your
+        identity provider. To learn more, see Creating a role for web
+        identity or OpenID connect federation in the IAM User Guide.
+
+        When you create the IAM OIDC provider, you specify the following:
+
+        - The URL of the OIDC identity provider (IdP) to trust
+        - A list of client IDs (also known as audiences) that identify the
+          application or applications allowed to authenticate using the OIDC
+          provider
+        - A dictionary of tags that are attached to the specified IAM OIDC provider
+        - A list of thumbprints of one or more server certificates that the
+          IdP uses
+
+        You get all of this information from the OIDC IdP you want to use to
+        access Amazon Web Services.
+
+        :type url: string
+        :param url: The URL of the identity provider. The URL must begin with
+            https:// and should correspond to the iss claim in the provider's
+            OpenID Connect ID tokens. Per the OIDC standard, path components
+            are allowed but query parameters are not. Typically the URL
+            consists of only a hostname, like https://server.example.org or
+            https://example.com. The URL should not contain a port number.
+            You cannot register the same provider multiple times in a single
+            AWS account. If you try to submit a URL that has already been used
+            for an OpenID Connect provider in the AWS account, you will get
+            an error.
+        :type client_ids: list
+        :param client_id_list: Provides a list of client IDs, also known as
+            audiences. When a mobile or web app registers with an OpenID
+            Connect provider, they establish a value that identifies the
+            application. This is the value that's sent as the client_id
+            parameter on OAuth requests.
+            You can register multiple client IDs with the same provider. For
+            example, you might have multiple applications that use the same
+            OIDC provider. You cannot register more than 100 client IDs with
+            a single IAM OIDC provider.
+            There is no defined format for a client ID. This operation accepts
+            client IDs up to 255 characters long.
+        :type tags: dict of key/value tags
+        :param tags: A dictionary of tags that you want to attach to the new IAM
+            OpenID Connect (OIDC) provider. Each tag consists of a key name
+            and an associated value. For more information about tagging, see
+            Tagging IAM resources in the IAM User Guide.
+        :type thumbprints: list
+        :param thumbprints: A list of server certificate thumbprints for the
+            OpenID Connect (OIDC) identity provider’s server certificates.
+            Typically this list includes only one entry. However, IAM lets
+            you have up to five thumbprints for an OIDC provider. This lets
+            you maintain multiple thumbprints if the identity provider is
+            rotating certificates.
+            This parameter is optional. If it is not included, IAM will
+            retrieve and use the top intermediate certificate authority (CA)
+            thumbprint of the OpenID Connect identity provider server certificate.
+            The server certificate thumbprint is the hex-encoded SHA-1 hash
+            value of the X.509 certificate used by the domain where the OpenID
+            Connect provider makes its keys available. It is always a
+            40-character string.
+        """
+        params = {
+            'Url': url,
+        }
+        i = 1
+        for client_id in client_ids:
+            client_id_member = "ClientIDList.member.%d" % i
+            params[client_id_member] = client_id
+            i += 1
+        if thumbprints is not None:
+            i = 1
+            for thumbprint in thumbprints:
+                thumbprint_member = "ThumbprintList.member.%d" % i
+                params[thumbprint_member] = thumbprint
+                i += 1
+        if tags is not None:
+            i = 1
+            for k, v in tags.items():
+                params['Tags.member.%d.Key' % i] = k
+                params['Tags.member.%d.Value' % i] = v
+                i += 1
+        return self.get_response('CreateOpenIDConnectProvider', params,
+                                headers=headers, list_marker='Tags')
+
+    def list_open_id_connect_providers(self, headers=None):
+        """
+        Lists information about the IAM OpenID Connect (OIDC) provider
+        resource objects defined in the account.
+        """
+        return self.get_response('ListOpenIDConnectProviders', {},
+                                 headers=headers,
+                                 list_marker='OpenIDConnectProviderList')
+
+    def get_open_id_connect_provider(self, open_id_connect_provider_arn, headers=None):
+        """
+        Returns information about the specified OpenID Connect (OIDC) provider
+        resource object in IAM
+
+        :type open_id_connect_provider_arn: string
+        :param open_id_connect_provider_arn: The Amazon Resource Name (ARN) of the OIDC
+            provider to get information about.
+
+        """
+        params = {'OpenIDConnectProviderArn': open_id_connect_provider_arn}
+        return self.get_response('GetOpenIDConnectProvider', params,
+                                 headers=headers,
+                                 list_marker=('ClientIDList',
+                                              'ThumbprintList',
+                                              'Tags'))
+
+    def delete_open_id_connect_provider(self, open_id_connect_provider_arn, headers=None):
+        """
+        Deletes an OpenID Connect (OIDC) provider.
+
+        Deleting an IAM OIDC provider resource does not update any roles
+        that reference the provider as a principal in their trust policies.
+        Any attempt to assume a role that references a deleted provider fails.
+
+        :type open_id_connect_provider_arn: string
+        :param open_id_connect_provider_arn: The Amazon Resource Name (ARN) of the OIDC
+            provider to delete.
+
+        """
+        params = {'OpenIDConnectProviderArn': open_id_connect_provider_arn}
+        return self.get_response('DeleteOpenIDConnectProvider', params,
+                                 headers=headers)
+
+    def update_open_id_connect_provider_thumbprint(self, open_id_connect_provider_arn,
+                                                   thumbprints, headers=None):
+        """
+        Replaces the existing list of server certificate thumbprints associated
+        with an OpenID Connect (OIDC) provider resource object with a new list
+        of thumbprints.
+        The list that you pass with this operation completely replaces the
+        existing list of thumbprints. (The lists are not merged.)
+        Typically, you need to update a thumbprint only when the identity
+        provider certificate changes, which occurs rarely. However, if the
+        provider's certificate does change, any attempt to assume an IAM role
+        that specifies the OIDC provider as a principal fails until the
+        certificate thumbprint is updated.
+
+        :type open_id_connect_provider_arn: string
+        :param open_id_connect_provider_arn: The Amazon Resource Name (ARN) of the OIDC
+            provider to delete.
+        :type thumbprints: list
+        :param thumbprints: A list of certificate thumbprints that are
+            associated with the specified IAM OpenID Connect provider. 
+        """
+        params = {'OpenIDConnectProviderArn': open_id_connect_provider_arn}
+        if thumbprints is not None:
+            i = 1
+            for thumbprint in thumbprints:
+                thumbprint_member = "ThumbprintList.member.%d" % i
+                params[thumbprint_member] = thumbprint
+                i += 1
+        return self.get_response('UpdateOpenIDConnectProviderThumbprint', params,
+                                 headers=headers)
+
+    def add_client_id_to_open_id_connect_provider(self, open_id_connect_provider_arn,
+                                                  client_id, headers=None):
+        """
+        Adds a new client ID (also known as audience) to the list of client IDs
+        already registered for the specified IAM OpenID Connect (OIDC) provider
+        resource.
+        This operation is idempotent; it does not fail or return an error if
+        you add an existing client ID to the provider.
+
+        :type open_id_connect_provider_arn: string
+        :param open_id_connect_provider_arn: The Amazon Resource Name (ARN) of the OIDC
+            provider to delete.
+
+        :type client_id: string
+        :param client_id: The client ID (also known as audience) to add to the
+            IAM OpenID Connect provider resource
+        """
+        params = {
+            'OpenIDConnectProviderArn': open_id_connect_provider_arn,
+            'ClientID': client_id
+        }
+        return self.get_response('AddClientIDToOpenIDConnectProvider', params,
+                                 headers=headers)
+
+    def remove_client_id_from_open_id_connect_provider(self, open_id_connect_provider_arn,
+                                                       client_id, headers=None):
+        """
+        Removes the specified client ID (also known as audience) from the list
+        of client IDs registered for the specified IAM OpenID Connect (OIDC)
+        provider resource object.
+        This operation is idempotent; it does not fail or return an error if
+        you try to remove a client ID that does not exist.
+
+        :type open_id_connect_provider_arn: string
+        :param open_id_connect_provider_arn: The Amazon Resource Name (ARN) of the OIDC
+            provider to delete.
+
+        :type client_id: string
+        :param client_id: The client ID (also known as audience) to remove from
+            the IAM OpenID Connect provider resource
+        """
+        params = {
+            'OpenIDConnectProviderArn': open_id_connect_provider_arn,
+            'ClientID': client_id
+        }
+        return self.get_response('RemoveClientIDFromOpenIDConnectProvider', params,
+                                 headers=headers)
+
+    def list_open_id_connect_provider_tags(self, open_id_connect_provider_arn,
+                                           marker=None, max_items=None,
+                                           headers=None):
+        """
+        Lists the tags that are attached to the specified OpenID Connect
+        (OIDC)-compatible identity provider. The returned list of tags is
+        sorted by tag key. For more information, see About web identity federation.
+
+        :type open_id_connect_provider_arn: string
+        :param open_id_connect_provider_arn: The ARN of the OpenID Connect (OIDC)
+            identity provider whose tags you want to see
+
+        :type marker: string
+        :param marker: Use this parameter only when paginating results and
+            only after you receive a response indicating that the results are
+            truncated. Set it to the value of the Marker element in the
+            response that you received to indicate where the next call should
+            start.
+
+        :type max_items: string
+        :param max_items: Use this only when paginating results to indicate
+            the maximum number of items that you want in the response. If
+            additional items exist beyond the maximum that you specify, the
+            IsTruncated response element is true.
+            If you do not include this parameter, it defaults to 100. Note
+            that IAM might return fewer results, even when more results are
+            available. In that case, the IsTruncated response element returns
+            true, and Marker contains a value to include in the subsequent
+            call that tells the service where to continue from.
+        """
+        params = {'OpenIDConnectProviderArn': open_id_connect_provider_arn}
+        if marker is not None:
+            params['Marker'] = marker
+        if max_items is not None:
+            params['MaxItems'] = max_items
+        return self.get_response('ListOpenIDConnectProviderTags', params,
+                                 headers=headers,
+                                 list_marker='Tags')
+
+    def tag_open_id_connect_provider(self, open_id_connect_provider_arn, tags,
+                                     headers=None):
+        """
+        Adds one or more tags to an OpenID Connect (OIDC)-compatible
+        identity provider. For more information about these providers, see
+        About web identity federation. If a tag with the same key name
+        already exists, then that tag is overwritten with the new value.
+
+        :type open_id_connect_provider_arn: string
+        :param open_id_connect_provider_arn: The ARN of the OIDC identity
+            provider in IAM to which you want to add tags.
+        :type tags: dict of key/value tags
+        :param tags: A dictionary of tags that you want to add to the OpenID
+            Connect (OIDC) provider. Each tag consists of a key name
+            and an associated value.
+        """
+        params = {'OpenIDConnectProviderArn': open_id_connect_provider_arn}
+        if tags is not None:
+            i = 1
+            for k, v in tags.items():
+                params['Tags.member.%d.Key' % i] = k
+                params['Tags.member.%d.Value' % i] = v
+                i += 1
+        return self.get_response('TagOpenIDConnectProvider', params, headers=headers)
+
+    def untag_open_id_connect_provider(self, open_id_connect_provider_arn, tag_keys,
+                                     headers=None):
+        """
+        Adds one or more tags to an OpenID Connect (OIDC)-compatible
+        identity provider. For more information about these providers, see
+        About web identity federation. If a tag with the same key name
+        already exists, then that tag is overwritten with the new value.
+
+        :type open_id_connect_provider_arn: string
+        :param open_id_connect_provider_arn: The ARN of the OIDC identity
+            provider in IAM to which you want to add tags.
+        :type tag_keys: list of tag key names
+        :param tag_keys: A list of tags key names that you want to remove from
+            a OIDC Provider. The tags with matching keys are removed from the
+            specified OIDC Provider.
+        """
+        params = {'OpenIDConnectProviderArn': open_id_connect_provider_arn}
+        i = 1
+        for k in tag_keys:
+            params['TagKeys.member.%d' % i] = k
+            i += 1
+        return self.get_response('UntagOpenIDConnectProvider', params, headers=headers)
+
     def create_saml_provider(self, saml_metadata_document, name,
                              headers=None):
         """
