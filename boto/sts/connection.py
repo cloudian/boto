@@ -180,7 +180,8 @@ class STSConnection(AWSQueryConnection):
                 token = self._get_session_token(duration,
                                                 mfa_serial_number,
                                                 mfa_token)
-                _session_token_cache[token_key] = token
+                if isinstance(token, Credentials):
+                    _session_token_cache[token_key] = token
             finally:
                 self._mutex.release()
         return token
