@@ -251,6 +251,49 @@ class AssumedRoleWithSAML(AssumedRole):
         elif name == 'SubjectType':
             self.subject_type = value
 
+class AssumedRoleWithWebIdentity(AssumedRole):
+    """
+    :ivar user: The assumed role user.
+    :ivar credentials: A Credentials object containing the credentials.
+    :ivar audience: The intended audience of the web identity token. This is
+          typically the client ID issued to the application that requested the
+          credentials.
+    :ivar packed_policy_size: A percentage value that indicates the packed
+          size of the session policies and session tags combined passed in the
+          request. The request fails if the packed size is greater than 100
+          percent. Integer.
+    :ivar provider: The issuing authority of the web identity token. For
+          OpenID Connect ID tokens, this contains the value of the iss field.
+          For OAuth 2.0 access tokens, this contains the value of the
+          ProviderId parameter.
+    :ivar source_identity: The value of the source identity that the identity
+          provider asserted in the web identity token.
+    :ivar subject_from_web_identity_token: The unique user identifier returned
+          by the identity provider. This is associated with the token submitted
+          with the AssumeRoleWithWebIdentity call. For OpenID Connect ID
+          tokens, this is the value of the sub field.
+    """
+    def __init__(self, connection=None, credentials=None, user=None):
+        super(AssumedRoleWithWebIdentity, self).__init__(connection, credentials, user)
+        self.audience = None
+        self.packed_policy_size = None
+        self.provider = None
+        self.source_identity = None
+        self.subject_from_web_identity_token = None
+
+    def endElement(self, name, value, connection):
+        super(AssumedRoleWithWebIdentity, self).endElement(name, value, connection)
+        if name == 'Audience':
+            self.audience = value
+        elif name == 'PackedPolicySize':
+            self.packed_policy_size = int(value)
+        elif name == 'Provider':
+            self.provider = value
+        elif name == 'SourceIdentity':
+            self.source_identity = value
+        elif name == 'SubjectFromWebIdentityToken':
+            self.subject_from_web_identity_token = value
+
 class User(object):
     """
     :ivar arn: The arn of the user assuming the role.

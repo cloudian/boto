@@ -26,6 +26,7 @@ from boto.provider import Provider, NO_CREDENTIALS_PROVIDED
 from boto.regioninfo import RegionInfo
 from boto.sts.credentials import Credentials, FederationToken, AssumedRole
 from boto.sts.credentials import AssumedRoleWithSAML, Identity
+from boto.sts.credentials import AssumedRoleWithWebIdentity
 from boto.sts.credentials import DecodeAuthorizationMessage
 import boto
 import boto.utils
@@ -554,7 +555,8 @@ class STSConnection(AWSQueryConnection):
 
     def assume_role_with_web_identity(self, role_arn, role_session_name,
                                       web_identity_token, provider_id=None,
-                                      policy=None, duration_seconds=None):
+                                      policy=None, duration_seconds=None,
+                                      headers=None):
         """
         Returns a set of temporary security credentials for users who
         have been authenticated in a mobile or web application with a
@@ -654,8 +656,8 @@ class STSConnection(AWSQueryConnection):
         return self.get_object(
             'AssumeRoleWithWebIdentity',
             params,
-            AssumedRole,
-            verb='POST'
+            AssumedRoleWithWebIdentity,
+            headers=headers, verb='POST'
         )
 
     def decode_authorization_message(self, encoded_message):
