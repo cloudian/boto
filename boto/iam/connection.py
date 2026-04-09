@@ -1693,7 +1693,7 @@ class IAMConnection(AWSQueryConnection):
                                   'PolicyDocument': policy_document},
                                  headers=headers)
 
-    def create_open_id_connect_provider(self, url, client_ids,
+    def create_open_id_connect_provider(self, url, client_ids=None,
                                         tags=None, thumbprints=None,
                                         headers=None):
         """
@@ -1772,11 +1772,12 @@ class IAMConnection(AWSQueryConnection):
         params = {
             'Url': url,
         }
-        i = 1
-        for client_id in client_ids:
-            client_id_member = "ClientIDList.member.%d" % i
-            params[client_id_member] = client_id
-            i += 1
+        if client_ids is not None:
+            i = 1
+            for client_id in client_ids:
+                client_id_member = "ClientIDList.member.%d" % i
+                params[client_id_member] = client_id
+                i += 1
         if thumbprints is not None:
             i = 1
             for thumbprint in thumbprints:
