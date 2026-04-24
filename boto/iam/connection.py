@@ -2760,8 +2760,12 @@ class IAMConnection(AWSQueryConnection):
             list_marker='SSHPublicKeys')
 
     def simulate_principal_policy(self, policy_source_arn, action_names,
-                                  resource_arns=[], marker=None,
-                                  max_items=None, headers=None):
+                                  resource_arns=[], policy_input_list=None,
+                                  permissions_boundary_policy_input_list=None,
+                                  resource_policy=None, resource_owner=None,
+                                  caller_arn=None, context_entries=None,
+                                  resource_handling_option=None,
+                                  marker=None, max_items=None, headers=None):
         """
         Simulate Principal Policy.
 
@@ -2776,6 +2780,40 @@ class IAMConnection(AWSQueryConnection):
         :type resource_arns: list
         :param resource_arns: A list of ARNs of AWS resources to
             include in the simulation
+
+        :type policy_input_list: list
+        :param policy_input_list: A list of policy documents as JSON strings
+            to include in the simulation in addition to the policies attached
+            to the principal
+
+        :type permissions_boundary_policy_input_list: list
+        :param permissions_boundary_policy_input_list: A list of permissions
+            boundary policy documents (JSON strings) to simulate as the
+            permissions boundary for the principal
+
+        :type resource_policy: string
+        :param resource_policy: A resource-based policy document (JSON string)
+            to include in the simulation
+
+        :type resource_owner: string
+        :param resource_owner: The AWS account ID that owns the simulated
+            resources. Required when resource_policy is specified and the
+            owner differs from the caller
+
+        :type caller_arn: string
+        :param caller_arn: The ARN of the IAM user to simulate as the caller.
+            Defaults to policy_source_arn if not specified
+
+        :type context_entries: list
+        :param context_entries: A list of context key/value dicts for
+            evaluating condition keys. Each dict must contain:
+            'context_key_name' (string), 'context_key_values' (list of
+            strings), and 'context_key_type' (string, e.g. 'string', 'ip',
+            'numeric', 'boolean', 'date', etc.)
+
+        :type resource_handling_option: string
+        :param resource_handling_option: The type of simulation to run,
+            e.g. 'EC2-VPC-InstanceStore', 'EC2-VPC-EBS'
 
         :type marker: string
         :param marker: Use this parameter only when paginating results
@@ -2800,6 +2838,34 @@ class IAMConnection(AWSQueryConnection):
             resource_member = "ResourceArns.member.%d" % i
             params[resource_member] = resource_arn
             i += 1
+        if policy_input_list is not None:
+            i = 1
+            for policy in policy_input_list:
+                params['PolicyInputList.member.%d' % i] = policy
+                i += 1
+        if permissions_boundary_policy_input_list is not None:
+            i = 1
+            for policy in permissions_boundary_policy_input_list:
+                params['PermissionsBoundaryPolicyInputList.member.%d' % i] = policy
+                i += 1
+        if resource_policy is not None:
+            params['ResourcePolicy'] = resource_policy
+        if resource_owner is not None:
+            params['ResourceOwner'] = resource_owner
+        if caller_arn is not None:
+            params['CallerArn'] = caller_arn
+        if context_entries is not None:
+            i = 1
+            for entry in context_entries:
+                params['ContextEntries.member.%d.ContextKeyName' % i] = entry['context_key_name']
+                params['ContextEntries.member.%d.ContextKeyType' % i] = entry['context_key_type']
+                j = 1
+                for val in entry.get('context_key_values', []):
+                    params['ContextEntries.member.%d.ContextKeyValues.member.%d' % (i, j)] = val
+                    j += 1
+                i += 1
+        if resource_handling_option is not None:
+            params['ResourceHandlingOption'] = resource_handling_option
         if marker is not None:
             params['Marker'] = marker
         if max_items is not None:
